@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristhianzl/pullalerts/internal/engine"
-	"github.com/cristhianzl/pullalerts/internal/githubapi"
+	"github.com/Cristhianzl/telegram-PTAL/internal/engine"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
 )
 
 // RenderEvents builds the text for a batch of events. Events of the same kind
@@ -152,7 +152,7 @@ func RenderSummary(snap *githubapi.Snapshot, lastSuccess time.Time) string {
 	sort.SliceStable(parts, func(i, j int) bool { return false })
 
 	var b strings.Builder
-	b.WriteString("🤖 <b>PullAlerts</b>\n\n")
+	b.WriteString("🤖 <b>PTAL</b>\n\n")
 	if snap.Viewer != "" {
 		fmt.Fprintf(&b, "GitHub: <b>@%s</b>\n", esc(snap.Viewer))
 	}

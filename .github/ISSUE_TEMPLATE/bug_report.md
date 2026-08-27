@@ -20,7 +20,7 @@ of `.env`.** If this is a security vulnerability, follow
 
 ## Environment
 
-- Output of `pullalerts doctor` (redact repository and organization names if
+- Output of `ptal doctor` (redact repository and organization names if
   they are private):
 
 ```
@@ -28,5 +28,5 @@ paste here
 ```
 
 - Operating system and version:
-- `pullalerts version`:
+- `ptal version`:
 - Credential type: GitHub CLI / classic PAT / fine-grained PAT / none

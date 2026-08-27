@@ -1,4 +1,4 @@
-// Package service registers PullAlerts to start with the system.
+// Package service registers PTAL to start with the system.
 //
 // Each operating system has its own mechanism, but none of them requires
 // administrator privileges: user-mode systemd, a LaunchAgent, and a task
@@ -15,7 +15,7 @@ import (
 )
 
 // Name identifies the service on all three systems.
-const Name = "pullalerts"
+const Name = "ptal"
 
 // Info describes the installation state.
 type Info struct {
@@ -109,8 +109,8 @@ func systemdUnitPath() string {
 }
 
 const systemdTemplate = `[Unit]
-Description=PullAlerts - your pull requests on Telegram
-Documentation=https://github.com/cristhianzl/pullalerts
+Description=PTAL - your pull requests on Telegram
+Documentation=https://github.com/Cristhianzl/telegram-PTAL
 After=network-online.target
 Wants=network-online.target
 
@@ -166,7 +166,7 @@ func uninstallSystemd() error {
 
 // ---------- macOS / launchd ----------
 
-const launchdLabel = "dev.pullalerts.agent"
+const launchdLabel = "dev.ptal.agent"
 
 func launchdPlistPath() string {
 	home, _ := os.UserHomeDir()
@@ -193,8 +193,8 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
     <key>SuccessfulExit</key>   <false/>
   </dict>
   <key>ThrottleInterval</key>   <integer>10</integer>
-  <key>StandardOutPath</key>    <string>%s/pullalerts.log</string>
-  <key>StandardErrorPath</key>  <string>%s/pullalerts.log</string>
+  <key>StandardOutPath</key>    <string>%s/ptal.log</string>
+  <key>StandardErrorPath</key>  <string>%s/ptal.log</string>
 </dict>
 </plist>
 `
@@ -257,9 +257,9 @@ func logDirectory() string {
 	case "darwin":
 		return filepath.Join(home, "Library", "Logs")
 	case "windows":
-		return filepath.Join(os.Getenv("LOCALAPPDATA"), "PullAlerts")
+		return filepath.Join(os.Getenv("LOCALAPPDATA"), "PTAL")
 	}
-	return filepath.Join(home, ".local", "state", "pullalerts")
+	return filepath.Join(home, ".local", "state", "ptal")
 }
 
 func run(name string, args ...string) error {

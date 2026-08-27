@@ -6,8 +6,8 @@ that changes are tested and that the tool never becomes noisier by accident.
 ## Getting set up
 
 ```bash
-git clone https://github.com/cristhianzl/pullalerts
-cd pullalerts
+git clone https://github.com/Cristhianzl/telegram-PTAL
+cd ptal
 cp .env.example .env
 make doctor    # tells you exactly what is still missing
 ```
@@ -66,8 +66,8 @@ can increase message volume needs care:
 
 | Path | Responsibility |
 |---|---|
-| `cmd/pullalerts/main.go` | Command dispatch and usage. |
-| `cmd/pullalerts/commands.go` | The commands themselves. |
+| `cmd/ptal/main.go` | Command dispatch and usage. |
+| `cmd/ptal/commands.go` | The commands themselves. |
 | `internal/config` | Configuration loading, validation, credential discovery. |
 | `internal/githubapi` | GraphQL client, REST search client, and the fallback between them. |
 | `internal/engine` | Snapshot diffing, event rules, anti-spam guards. |

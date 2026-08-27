@@ -1,8 +1,8 @@
 // Package config loads and validates the credentials and preferences that
-// PullAlerts needs to run.
+// PTAL needs to run.
 //
 // Resolution order: process environment variables always win, then the .env
-// file found at the first existing path among $PULLALERTS_CONFIG, the current
+// file found at the first existing path among $PTAL_CONFIG, the current
 // directory, the executable's directory, and the OS configuration directory.
 package config
 
@@ -81,7 +81,7 @@ var defaultIgnoredAuthors = []string{
 }
 
 // ErrNoTelegramChat means `setup` has not been run yet.
-var ErrNoTelegramChat = errors.New("TELEGRAM_CHAT_ID is not set: run `pullalerts setup`")
+var ErrNoTelegramChat = errors.New("TELEGRAM_CHAT_ID is not set: run `ptal setup`")
 
 // Load resolves the .env file, applies environment overrides and validates.
 func Load() (*Config, error) {
@@ -226,7 +226,7 @@ func writeFilePrivate(path string, data []byte) error {
 
 func findEnvFile() string {
 	var candidates []string
-	if p := os.Getenv("PULLALERTS_CONFIG"); p != "" {
+	if p := os.Getenv("PTAL_CONFIG"); p != "" {
 		candidates = append(candidates, p)
 	}
 	if wd, err := os.Getwd(); err == nil {
@@ -236,7 +236,7 @@ func findEnvFile() string {
 		candidates = append(candidates, filepath.Join(filepath.Dir(exe), ".env"))
 	}
 	if dir, err := os.UserConfigDir(); err == nil {
-		candidates = append(candidates, filepath.Join(dir, "pullalerts", ".env"))
+		candidates = append(candidates, filepath.Join(dir, "ptal", ".env"))
 	}
 	for _, p := range candidates {
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
@@ -253,7 +253,7 @@ func defaultStatePath(envPath string) string {
 		return filepath.Join(filepath.Dir(envPath), "state.json")
 	}
 	if dir, err := os.UserConfigDir(); err == nil {
-		return filepath.Join(dir, "pullalerts", "state.json")
+		return filepath.Join(dir, "ptal", "state.json")
 	}
 	return "state.json"
 }

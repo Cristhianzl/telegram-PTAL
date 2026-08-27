@@ -1,4 +1,4 @@
-// Command pullalerts watches the pull requests tied to your GitHub user and
+// Command ptal watches the pull requests tied to your GitHub user and
 // tells you about them on Telegram.
 package main
 
@@ -14,10 +14,10 @@ import (
 // version is replaced at build time for releases.
 var version = "0.1.0-dev"
 
-const usage = `pullalerts - your GitHub pull requests on Telegram
+const usage = `ptal - your GitHub pull requests on Telegram
 
 USAGE
-  pullalerts <command>
+  ptal <command>
 
 COMMANDS
   setup       Connect Telegram and discover your chat automatically
@@ -62,7 +62,7 @@ func main() {
 	case "status":
 		err = cmdStatus()
 	case "version", "--version", "-v":
-		fmt.Printf("pullalerts %s\n", version)
+		fmt.Printf("ptal %s\n", version)
 	case "help", "--help", "-h":
 		fmt.Print(usage)
 	default:

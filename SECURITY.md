@@ -2,7 +2,7 @@
 
 ## What this software is
 
-PullAlerts is a background daemon that holds two credentials — a GitHub token
+PTAL is a background daemon that holds two credentials — a GitHub token
 and a Telegram bot token — and makes outbound requests with them. It listens on
 no port, accepts no inbound connection, and executes nothing on your behalf.
 
@@ -29,7 +29,7 @@ that ends up inside a Telegram message.
 
 ## Token scope
 
-PullAlerts only ever **reads**. It never writes to GitHub: no comments, no
+PTAL only ever **reads**. It never writes to GitHub: no comments, no
 reviews, no merges, no repository changes. If you are choosing scopes for a
 classic token, `repo` is broader than this tool needs — it is required because
 GitHub has no read-only equivalent that also covers private repository search.
@@ -43,11 +43,11 @@ password.
 Do not open a public issue.
 
 Report privately through
-[GitHub Security Advisories](https://github.com/cristhianzl/pullalerts/security/advisories/new),
+[GitHub Security Advisories](https://github.com/Cristhianzl/telegram-PTAL/security/advisories/new),
 which lets us discuss and fix the issue before it becomes public.
 
 Please include what an attacker could do, the steps to reproduce, and the
-version (`pullalerts version`). You can expect an initial response within a
+version (`ptal version`). You can expect an initial response within a
 week.
 
 ## Out of scope

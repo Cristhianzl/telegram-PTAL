@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristhianzl/pullalerts/internal/githubapi"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
 )
 
 // fakeState implements Seen for the gate tests.

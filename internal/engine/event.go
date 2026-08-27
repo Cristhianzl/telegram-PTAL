@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cristhianzl/pullalerts/internal/githubapi"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
 )
 
 // Kind identifies the detected transition.

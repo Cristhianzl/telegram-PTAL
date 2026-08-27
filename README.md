@@ -1,4 +1,7 @@
-# PullAlerts
+# PTAL
+
+**P**lease **T**ake **A** **L**ook — the four letters developers leave on a pull
+request when they need your eyes on it.
 
 Your GitHub pull requests on Telegram. Runs in the background, starts with your
 computer, and tells you when something needs you.
@@ -48,13 +51,13 @@ holding it controls your bot.
 ### 2. Install
 
 ```bash
-git clone https://github.com/cristhianzl/pullalerts
-cd pullalerts
+git clone https://github.com/Cristhianzl/telegram-PTAL
+cd ptal
 make build
 ```
 
 Or download a binary for your platform from the
-[releases page](https://github.com/cristhianzl/pullalerts/releases).
+[releases page](https://github.com/Cristhianzl/telegram-PTAL/releases).
 
 ### 3. Configure
 
@@ -107,7 +110,7 @@ make install   # registers the service to start with your computer
 
 ## Choosing a credential
 
-There are three paths. PullAlerts tries them in order and falls through on its
+There are three paths. PTAL tries them in order and falls through on its
 own.
 
 ### The GitHub CLI (easiest)
@@ -139,7 +142,7 @@ organization's repositories vanish from results with no explicit error.
 
 > **Fine-grained tokens (`github_pat_…`) have two real limitations:** they
 > cannot reach the notifications API, and some organizations reject them by
-> enterprise policy. When that happens PullAlerts detects it and switches to
+> enterprise policy. When that happens PTAL detects it and switches to
 > public search on its own — you keep receiving pull requests from public
 > repositories, but without CI state, approvals, or private repositories. Run
 > `make doctor` to see which mode you are in.
@@ -165,7 +168,7 @@ GitHub treats "someone asked for your review" and "someone asked your team for a
 review" with the same search qualifier. On a large team the second category
 dominates: on one real account the broad qualifier returned 61 open pull
 requests, of which exactly **1** was a request addressed to that person by name.
-PullAlerts uses `user-review-requested` instead.
+PTAL uses `user-review-requested` instead.
 
 ```bash
 MAX_AGE_DAYS=5
@@ -179,14 +182,14 @@ IGNORE_AUTHORS=app/dependabot,app/renovate
 ## Commands
 
 ```
-pullalerts setup       Connect Telegram and discover your chat
-pullalerts doctor      Diagnose token, chat, connectivity and service
-pullalerts once        Run a single cycle and print what it found
-pullalerts panel       Send a panel with the current state to Telegram
-pullalerts run         Keep running (what the service executes)
-pullalerts install     Register to start with the system
-pullalerts uninstall   Remove the registration
-pullalerts status      Show the service and the last sync
+ptal setup       Connect Telegram and discover your chat
+ptal doctor      Diagnose token, chat, connectivity and service
+ptal once        Run a single cycle and print what it found
+ptal panel       Send a panel with the current state to Telegram
+ptal run         Keep running (what the service executes)
+ptal install     Register to start with the system
+ptal uninstall   Remove the registration
+ptal status      Show the service and the last sync
 ```
 
 `once` works before Telegram is configured, so you can check the search first.
@@ -201,10 +204,10 @@ pullalerts status      Show the service and the last sync
 | macOS | LaunchAgent with `RunAtLoad` and `KeepAlive/NetworkState` | no |
 | Windows | Task Scheduler, triggered at logon | no |
 
-`pullalerts install` detects the system and writes the right unit. On macOS,
+`ptal install` detects the system and writes the right unit. On macOS,
 `KeepAlive/NetworkState` means the daemon only runs when the network is up. On
 Linux, `enable-linger` is what keeps the service alive after logout — without
-it, PullAlerts would stop silently.
+it, PTAL would stop silently.
 
 ---
 
@@ -240,7 +243,7 @@ carrying CI state, review decision and merge status. It costs about 5 points of
 the 5,000 available per hour, so a two-minute interval uses roughly 3% of the
 budget.
 
-When an organization policy rejects the token, PullAlerts falls back to **REST
+When an organization policy rejects the token, PTAL falls back to **REST
 search**. It sees fewer fields, but keeps working. The token is still sent on
 this path even in reduced mode, because it raises the request budget from ten
 per minute to thirty.
@@ -279,7 +282,7 @@ enterprise policy blocks it. Use `gh` or a classic PAT with SSO authorized.
 everything out. `make doctor` prints both when the result is empty.
 
 **The service stopped after logout (Linux)** — `loginctl enable-linger $USER`.
-`pullalerts install` does this, but it can fail silently on some systems.
+`ptal install` does this, but it can fail silently on some systems.
 
 **Too many messages** — lower `MAX_AGE_DAYS`, confirm `INCLUDE_TEAM_REVIEWS` is
 `false`, and add noisy bots to `IGNORE_AUTHORS`.
@@ -294,4 +297,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues go to
 ## License
 
 [MIT](LICENSE) — do whatever you like, keep the copyright notice, no warranty.
-# telegram-PTAL

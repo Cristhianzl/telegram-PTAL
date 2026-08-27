@@ -14,7 +14,7 @@ func writeEnv(t *testing.T, content string) string {
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PULLALERTS_CONFIG", path)
+	t.Setenv("PTAL_CONFIG", path)
 	return path
 }
 

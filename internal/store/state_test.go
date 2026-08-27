@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristhianzl/pullalerts/internal/engine"
-	"github.com/cristhianzl/pullalerts/internal/githubapi"
+	"github.com/Cristhianzl/telegram-PTAL/internal/engine"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
 )
 
 func tempState(t *testing.T) *State {

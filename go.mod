@@ -1,3 +1,3 @@
-module github.com/cristhianzl/pullalerts
+module github.com/Cristhianzl/telegram-PTAL
 
 go 1.24

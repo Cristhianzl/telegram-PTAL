@@ -10,11 +10,11 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"github.com/cristhianzl/pullalerts/internal/config"
-	"github.com/cristhianzl/pullalerts/internal/engine"
-	"github.com/cristhianzl/pullalerts/internal/githubapi"
-	"github.com/cristhianzl/pullalerts/internal/store"
-	"github.com/cristhianzl/pullalerts/internal/telegram"
+	"github.com/Cristhianzl/telegram-PTAL/internal/config"
+	"github.com/Cristhianzl/telegram-PTAL/internal/engine"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
+	"github.com/Cristhianzl/telegram-PTAL/internal/store"
+	"github.com/Cristhianzl/telegram-PTAL/internal/telegram"
 )
 
 // Runner executes synchronization cycles.
@@ -234,7 +234,7 @@ func (r *Runner) Run(ctx context.Context) error {
 				// An invalid credential is not fixed by retrying.
 				r.log.Printf("invalid credential: %v", authErr)
 				r.notify(ctx, "🔑 <b>Invalid GitHub token</b>\n\nSyncing is paused. "+
-					"Generate a new token and run <code>pullalerts doctor</code>.", false)
+					"Generate a new token and run <code>ptal doctor</code>.", false)
 				return authErr
 			}
 			failures++

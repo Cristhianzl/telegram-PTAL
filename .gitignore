@@ -1,17 +1,17 @@
-# segredos — NUNCA commitar
+# secrets - never commit
 .env
 *.token
 
-# estado local
+# local state
 state.json
 state.json.tmp
 *.db
 
 # build
 /dist/
-/pullalerts
-/pullalerts.exe
+/ptal
+/ptal.exe
 
-# SO
+# OS
 .DS_Store
 Thumbs.db

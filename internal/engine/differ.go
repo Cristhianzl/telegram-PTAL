@@ -3,7 +3,7 @@ package engine
 import (
 	"time"
 
-	"github.com/cristhianzl/pullalerts/internal/githubapi"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
 )
 
 // Tracked is a pull request kept between cycles, with the little extra

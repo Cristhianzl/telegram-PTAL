@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristhianzl/pullalerts/internal/engine"
-	"github.com/cristhianzl/pullalerts/internal/githubapi"
+	"github.com/Cristhianzl/telegram-PTAL/internal/engine"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
 )
 
 func samplePR() *githubapi.PullRequest {

@@ -1,5 +1,5 @@
-# PullAlerts - your GitHub pull requests on Telegram
-BINARY  := pullalerts
+# PTAL - your GitHub pull requests on Telegram
+BINARY  := ptal
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.0-dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 GO      ?= go
@@ -8,7 +8,7 @@ GO      ?= go
 
 ## help: show these commands
 help:
-	@echo "PullAlerts $(VERSION)"
+	@echo "PTAL $(VERSION)"
 	@echo
 	@sed -n 's/^## //p' $(MAKEFILE_LIST) | awk -F': ' '{printf "  \033[1m%-12s\033[0m %s\n", $$1, $$2}'
 	@echo
@@ -16,7 +16,7 @@ help:
 
 ## build: compile the binary for this system
 build:
-	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/pullalerts
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/ptal
 
 ## setup: connect Telegram and discover your chat
 setup: build
@@ -66,11 +66,11 @@ ci: check
 ## dist: build for Linux, macOS and Windows
 dist:
 	@mkdir -p dist
-	GOOS=linux   GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-linux-amd64   ./cmd/pullalerts
-	GOOS=linux   GOARCH=arm64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-linux-arm64   ./cmd/pullalerts
-	GOOS=darwin  GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-amd64  ./cmd/pullalerts
-	GOOS=darwin  GOARCH=arm64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-arm64  ./cmd/pullalerts
-	GOOS=windows GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS) -H=windowsgui" -o dist/$(BINARY)-windows-amd64.exe ./cmd/pullalerts
+	GOOS=linux   GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-linux-amd64   ./cmd/ptal
+	GOOS=linux   GOARCH=arm64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-linux-arm64   ./cmd/ptal
+	GOOS=darwin  GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-amd64  ./cmd/ptal
+	GOOS=darwin  GOARCH=arm64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-arm64  ./cmd/ptal
+	GOOS=windows GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS) -H=windowsgui" -o dist/$(BINARY)-windows-amd64.exe ./cmd/ptal
 	@ls -lh dist/
 
 ## clean: remove binaries and local state

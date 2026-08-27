@@ -13,8 +13,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cristhianzl/pullalerts/internal/config"
-	"github.com/cristhianzl/pullalerts/internal/store"
+	"github.com/Cristhianzl/telegram-PTAL/internal/config"
+	"github.com/Cristhianzl/telegram-PTAL/internal/store"
 )
 
 // fakeTelegram records the messages it would receive, for the test to inspect.

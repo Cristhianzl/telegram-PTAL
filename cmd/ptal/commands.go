@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristhianzl/pullalerts/internal/config"
-	"github.com/cristhianzl/pullalerts/internal/githubapi"
-	"github.com/cristhianzl/pullalerts/internal/runner"
-	"github.com/cristhianzl/pullalerts/internal/service"
-	"github.com/cristhianzl/pullalerts/internal/store"
-	"github.com/cristhianzl/pullalerts/internal/telegram"
+	"github.com/Cristhianzl/telegram-PTAL/internal/config"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
+	"github.com/Cristhianzl/telegram-PTAL/internal/runner"
+	"github.com/Cristhianzl/telegram-PTAL/internal/service"
+	"github.com/Cristhianzl/telegram-PTAL/internal/store"
+	"github.com/Cristhianzl/telegram-PTAL/internal/telegram"
 )
 
 // cmdSetup connects Telegram without making the user hunt for a chat ID.
@@ -79,13 +79,13 @@ func waitForStart(ctx context.Context, tg *telegram.Client) (string, error) {
 		}
 		fmt.Print(".")
 	}
-	return "", fmt.Errorf("nobody messaged the bot within 5 minutes; run `pullalerts setup` again")
+	return "", fmt.Errorf("nobody messaged the bot within 5 minutes; run `ptal setup` again")
 }
 
 func sendTest(ctx context.Context, tg *telegram.Client, chatID string) error {
-	text := "✅ <b>PullAlerts connected</b>\n\n" +
+	text := "✅ <b>PTAL connected</b>\n\n" +
 		"From now on I will tell you here about the pull requests tied to you.\n\n" +
-		"<i>Next step: <code>pullalerts install</code> so I start with your computer.</i>"
+		"<i>Next step: <code>ptal install</code> so I start with your computer.</i>"
 	if _, err := tg.Send(ctx, chatID, text, telegram.SendOptions{}); err != nil {
 		return fmt.Errorf("could not send the test message: %w", err)
 	}
@@ -100,7 +100,7 @@ func cmdDoctor(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Printf("pullalerts %s\n", version)
+	fmt.Printf("ptal %s\n", version)
 	if cfg.SourcePath != "" {
 		fmt.Printf("configuration: %s\n", cfg.SourcePath)
 	} else {
@@ -134,7 +134,7 @@ func cmdDoctor(ctx context.Context) error {
 		} else {
 			fmt.Printf("✓ Telegram: bot @%s\n", bot.Username)
 			if cfg.TelegramChat == "" {
-				fail("TELEGRAM_CHAT_ID is missing - run `pullalerts setup`.")
+				fail("TELEGRAM_CHAT_ID is missing - run `ptal setup`.")
 			} else {
 				fmt.Printf("✓ Destination chat: %s\n", cfg.TelegramChat)
 			}
@@ -148,7 +148,7 @@ func cmdDoctor(ctx context.Context) error {
 	case info.Installed:
 		fmt.Printf("• Service installed but stopped (%s)\n", info.Manager)
 	default:
-		fmt.Printf("• Service not installed - run `pullalerts install`\n")
+		fmt.Printf("• Service not installed - run `ptal install`\n")
 	}
 
 	if st, err := store.Load(cfg.StatePath); err == nil && st.FirstRunDone {
@@ -197,7 +197,7 @@ func checkGitHub(ctx context.Context, cfg *config.Config, fail func(string, ...a
 		var policyErr *githubapi.PolicyError
 		if errors.As(err, &policyErr) {
 			fmt.Printf("• The organization rejects this token:\n    %s\n", policyErr.Msg)
-			fmt.Println("  -> PullAlerts will fall back to public search automatically.")
+			fmt.Println("  -> PTAL will fall back to public search automatically.")
 			fmt.Println("  -> Private repositories and CI state become unavailable.")
 			fmt.Println("  -> For full mode, use a classic PAT with the organization's SSO authorized.")
 			return
@@ -251,7 +251,7 @@ func cmdOnce(ctx context.Context) error {
 		return err
 	}
 	if cfg.TelegramChat == "" {
-		fmt.Println("• Telegram not configured - listing only (run `pullalerts setup` to receive alerts)")
+		fmt.Println("• Telegram not configured - listing only (run `ptal setup` to receive alerts)")
 	}
 	r := runner.New(cfg, state, log.New(os.Stdout, "", log.Ltime))
 

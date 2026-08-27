@@ -15,7 +15,7 @@ import (
 const (
 	defaultEndpoint = "https://api.github.com/graphql"
 	perBucket       = 50
-	userAgent       = "pullalerts/0.1 (+https://github.com/cristhianzl/pullalerts)"
+	userAgent       = "ptal/0.1 (+https://github.com/Cristhianzl/telegram-PTAL)"
 )
 
 // Client talks to GitHub's GraphQL API on behalf of a single user.

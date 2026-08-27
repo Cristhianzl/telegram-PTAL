@@ -8,7 +8,7 @@ import (
 )
 
 // Bucket is the reason a pull request counts as yours. Every bucket is
-// centered on the authenticated user — PullAlerts never watches a whole
+// centered on the authenticated user — PTAL never watches a whole
 // repository, only what connects back to you.
 type Bucket string
 
@@ -222,7 +222,7 @@ func (e *AuthError) Error() string { return "invalid GitHub credential: " + e.Ms
 
 // PolicyError means an organization or enterprise policy rejected the token
 // even though the resource is publicly readable. It is the signal for
-// PullAlerts to fall back to public search.
+// PTAL to fall back to public search.
 type PolicyError struct{ Msg string }
 
 func (e *PolicyError) Error() string {

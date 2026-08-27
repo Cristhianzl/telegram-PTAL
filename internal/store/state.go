@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cristhianzl/pullalerts/internal/engine"
+	"github.com/Cristhianzl/telegram-PTAL/internal/engine"
 )
 
 // schemaVersion allows migrating the file in future versions.
