@@ -42,8 +42,10 @@ COMMANDS
   resume      Start alerting again
   status      Show the service and the last sync
   version     Print the version
+  help        This list
 
-Configuration lives in a .env file. See .env.example for the options.
+Configuration lives in ~/.config/ptal/.env and is found from any directory.
+Run `ptal config` to see every setting with its current value.
 `
 
 func main() {

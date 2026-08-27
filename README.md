@@ -111,7 +111,7 @@ regardless of where you were standing when you ran it.
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | yes | The token from BotFather. |
 | `TELEGRAM_CHAT_ID` | — | Filled in by `make setup`. |
-| `GH_PAT_TOKEN` | see below | GitHub personal access token. |
+| `GH_PAT_TOKEN` | see below | GitHub personal access token. `GITHUB_TOKEN` also works. |
 | `USE_GH_CLI` | no | Use the GitHub CLI's token instead of `GH_PAT_TOKEN`. |
 | `GITHUB_LOGIN` | in public mode | Your GitHub username. Discovered from the token when there is one. |
 | `WATCH_REPOS` | no | Limit to `owner/repo` or a bare org name, comma-separated. Empty watches everything. |
@@ -125,6 +125,12 @@ regardless of where you were standing when you ran it.
 | `QUIET_HOURS` | no | e.g. `23:00-08:00`. Alerts arrive without a sound. |
 | `MAX_PER_HOUR` | no | Message ceiling per hour. Default `30`. |
 | `PUBLIC_ONLY` | no | Skip GraphQL and use public search only. |
+| `STATE_PATH` | no | Where state is kept. Defaults to beside your `.env`. |
+| `REVIEW_REPOS` | no | Repositories where Claude review is offered. Empty disables it. |
+| `REVIEW_RULES_DIR` | no | Directory holding the `.claude/` rules a review follows. |
+| `REVIEW_INSTRUCTIONS` | no | Text added to the prompt of every review. |
+| `REVIEW_MODEL` | no | Model override for reviews. |
+| `REVIEW_TIMEOUT` | no | Cap on one review. Default `15m`. |
 
 ---
 
@@ -263,12 +269,13 @@ The bot answers commands in the chat, so you do not need the terminal:
 ```
 /prs           your pull requests right now
 /prs <repo>    every open PR in a repository
+/repo <repo>   the same thing
 /status        last sync, mode, what is tracked
 /clear         delete every message the bot has sent
 /pause 2h      stop alerting for a while
 /resume        start alerting again
 /review <repo> <n>  review a pull request with Claude
-/help          this list
+/help          this list  (/start does the same)
 ```
 
 ### Reviewing a pull request with Claude

@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   argument narrows it to one author, with `me` as a shorthand for your own
   login. On demand only: it never feeds the alerting loop.
 
+### Removed
+
+- `BATCH_WINDOW`, which was configurable and documented but never read by
+  anything. Grouping happens by urgency within a cycle, not on a timer. A
+  setting that silently does nothing is worse than no setting.
+
 ### Fixed
 
 - Commands that take no arguments now reject extra ones. `ptal install --help`

@@ -17,6 +17,7 @@ const telegramHelp = `<b>PTAL commands</b>
 /prs - your pull requests right now
 /prs &lt;repo&gt; - every open PR in a repository
 /prs &lt;repo&gt; me - only the ones you opened
+/repo &lt;repo&gt; - same as /prs &lt;repo&gt;
 /status - last sync, mode, rate limit
 /clear - delete every message I have sent
 /pause 2h - stop alerting for a while

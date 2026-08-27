@@ -25,8 +25,6 @@ type Config struct {
 
 	// PollInterval is the gap between full GitHub searches.
 	PollInterval time.Duration
-	// BatchWindow is how long non-urgent events wait to be grouped.
-	BatchWindow time.Duration
 	// MaxPerHour caps messages per hour, guarding against floods.
 	MaxPerHour int
 	// QuietHours is a "23:00-08:00" range delivered without a sound.
@@ -84,7 +82,6 @@ type Config struct {
 // turning the chat into a wall of notifications.
 const (
 	DefaultPollInterval = 2 * time.Minute
-	DefaultBatchWindow  = 60 * time.Second
 	DefaultMaxPerHour   = 30
 	// DefaultMaxAgeDays drops pull requests idle for more than two weeks.
 	// Ones abandoned years ago are still technically open and would drown
@@ -126,7 +123,6 @@ func Load() (*Config, error) {
 		TelegramToken:      get("TELEGRAM_BOT_TOKEN"),
 		TelegramChat:       get("TELEGRAM_CHAT_ID"),
 		PollInterval:       DefaultPollInterval,
-		BatchWindow:        DefaultBatchWindow,
 		MaxPerHour:         DefaultMaxPerHour,
 		MaxAgeDays:         DefaultMaxAgeDays,
 		QuietHours:         get("QUIET_HOURS"),
@@ -139,9 +135,6 @@ func Load() (*Config, error) {
 
 	if d, err := time.ParseDuration(get("POLL_INTERVAL")); err == nil && d >= 30*time.Second {
 		c.PollInterval = d
-	}
-	if d, err := time.ParseDuration(get("BATCH_WINDOW")); err == nil && d >= 0 {
-		c.BatchWindow = d
 	}
 	if n, err := strconv.Atoi(get("MAX_PER_HOUR")); err == nil && n > 0 {
 		c.MaxPerHour = n
