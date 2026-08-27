@@ -51,9 +51,10 @@ func cmdSetup(ctx context.Context) error {
 	fmt.Println()
 
 	if err := cfg.SaveChatID(chatID); err != nil {
-		return fmt.Errorf("writing the chat into .env: %w", err)
+		return fmt.Errorf("writing the chat into the configuration: %w", err)
 	}
-	fmt.Printf("✓ Chat connected and saved to .env (%s)\n", chatID)
+	fmt.Printf("✓ Chat connected (%s)\n", chatID)
+	fmt.Printf("  saved to %s\n", cfg.SourcePath)
 
 	return sendTest(ctx, tg, chatID)
 }
@@ -314,7 +315,15 @@ func cmdRun(ctx context.Context) error {
 }
 
 func cmdInstall() error {
-	if err := service.Install(); err != nil {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	if cfg.SourcePath == "" {
+		return fmt.Errorf("no configuration found - run `ptal setup` first")
+	}
+
+	if err := service.Install(cfg.Dir()); err != nil {
 		return err
 	}
 	info := service.Status()
@@ -322,6 +331,7 @@ func cmdInstall() error {
 	if info.UnitPath != "" {
 		fmt.Printf("  %s\n", info.UnitPath)
 	}
+	fmt.Printf("  reading configuration from %s\n", cfg.SourcePath)
 	fmt.Println("✓ It will start on its own when the computer boots")
 	return nil
 }

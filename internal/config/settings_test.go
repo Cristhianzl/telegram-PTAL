@@ -137,10 +137,18 @@ func TestSetValueAppendsWhenKeyIsAbsent(t *testing.T) {
 
 // `ptal config` shows what is actually in force, which is not the file value
 // when a default applies or an environment variable overrides it.
+//
+// Pointing PTAL_CONFIG at a file that does not exist must yield defaults, not
+// whatever .env happens to sit in the working directory. This test caught that
+// exact leak: it was reading the developer's own configuration.
 func TestEffectiveShowsWhatIsInForce(t *testing.T) {
 	t.Setenv("PTAL_CONFIG", filepath.Join(t.TempDir(), "absent"))
 
 	cfg, _ := Load()
+
+	if cfg.SourcePath != "" {
+		t.Fatalf("an absent PTAL_CONFIG must not fall through to %s", cfg.SourcePath)
+	}
 
 	if got := cfg.Effective("poll-interval"); got != DefaultPollInterval.String() {
 		t.Errorf("poll-interval = %q, want the default %s", got, DefaultPollInterval)

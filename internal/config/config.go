@@ -160,6 +160,7 @@ func Load() (*Config, error) {
 	if c.StatePath == "" {
 		c.StatePath = defaultStatePath(path)
 	}
+	c.PublicOnly = c.PublicOnly || get("PUBLIC_ONLY") == "true"
 
 	return c, nil
 }
@@ -191,6 +192,29 @@ func (c *Config) SaveChatID(chatID string) error {
 	return nil
 }
 
+// DefaultConfigPath is where configuration belongs when none exists yet:
+// the OS configuration directory, not the working directory. Writing to the
+// working directory would put the file wherever the user happened to be
+// standing, and the daemon would then only find it from there.
+func DefaultConfigPath() string {
+	if dir, err := os.UserConfigDir(); err == nil {
+		return filepath.Join(dir, "ptal", ".env")
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(home, ".config", "ptal", ".env")
+	}
+	return ".env"
+}
+
+// Dir returns the directory holding the configuration, which is what the
+// service installer pins as its working directory.
+func (c *Config) Dir() string {
+	if c.SourcePath != "" {
+		return filepath.Dir(c.SourcePath)
+	}
+	return filepath.Dir(DefaultConfigPath())
+}
+
 // SetValue writes one key into the .env file, preserving comments, blank
 // lines and the order of the entries already there. Rewriting the file from
 // the parsed map instead would silently discard every comment the user has,
@@ -198,7 +222,13 @@ func (c *Config) SaveChatID(chatID string) error {
 func (c *Config) SetValue(key, value string) error {
 	path := c.SourcePath
 	if path == "" {
-		path = ".env"
+		path = DefaultConfigPath()
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			return err
+		}
+		// Remember it, so a second write in the same run lands in the same
+		// file rather than creating another one.
+		c.SourcePath = path
 	}
 
 	var lines []string
@@ -240,10 +270,18 @@ func writeFilePrivate(path string, data []byte) error {
 }
 
 func findEnvFile() string {
-	var candidates []string
+	// An explicit PTAL_CONFIG is honored even when the file is absent.
+	// Falling through to the next candidate would silently load a different
+	// configuration than the one the caller named - which in a test run means
+	// reading the developer's own credentials.
 	if p := os.Getenv("PTAL_CONFIG"); p != "" {
-		candidates = append(candidates, p)
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			return p
+		}
+		return ""
 	}
+
+	var candidates []string
 	if wd, err := os.Getwd(); err == nil {
 		candidates = append(candidates, filepath.Join(wd, ".env"))
 	}

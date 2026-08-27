@@ -43,17 +43,28 @@ func Manager() string {
 }
 
 // Install registers the service and starts it.
-func Install() error {
+//
+// workDir is where the daemon will look for its .env. Passing the directory
+// that actually holds the configuration - rather than wherever the user
+// happened to run `install` from - is what makes the service work regardless
+// of the shell's location at install time.
+func Install(workDir string) error {
 	exe, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("locating the executable: %w", err)
 	}
 	exe, _ = filepath.Abs(exe)
 
-	// The daemon must find the .env; record the current working directory.
-	wd, err := os.Getwd()
-	if err != nil {
-		wd = filepath.Dir(exe)
+	wd := workDir
+	if wd == "" {
+		if cwd, err := os.Getwd(); err == nil {
+			wd = cwd
+		} else {
+			wd = filepath.Dir(exe)
+		}
+	}
+	if err := os.MkdirAll(wd, 0o700); err != nil {
+		return fmt.Errorf("creating %s: %w", wd, err)
 	}
 
 	switch runtime.GOOS {

@@ -3,6 +3,7 @@
 [![CI](https://github.com/Cristhianzl/telegram-PTAL/actions/workflows/ci.yml/badge.svg)](https://github.com/Cristhianzl/telegram-PTAL/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Cristhianzl/telegram-PTAL.svg)](https://pkg.go.dev/github.com/Cristhianzl/telegram-PTAL)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Cristhianzl/telegram-PTAL)](https://goreportcard.com/report/github.com/Cristhianzl/telegram-PTAL)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS-lightgrey)](#requirements)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/Cristhianzl/telegram-PTAL?sort=semver)](https://github.com/Cristhianzl/telegram-PTAL/releases)
 
@@ -11,6 +12,9 @@ request when they need your eyes on it.
 
 Your GitHub pull requests on Telegram. Runs in the background, starts with your
 computer, and tells you when something needs you.
+
+> **Linux and macOS only.** Windows is not supported — run it inside WSL2,
+> where the Linux path works unchanged.
 
 It watches **only what is tied to your user** — review requests, your own pull
 requests, what was assigned to you, and where you were mentioned. It is not a
@@ -67,18 +71,23 @@ Or download a binary for your platform from the
 
 ### 3. Configure
 
-Copy the template and fill in what you need:
+Configuration lives in `~/.config/ptal/.env`, and `ptal` finds it from any
+directory. Create it with the template as a starting point:
 
 ```bash
-cp .env.example .env
+mkdir -p ~/.config/ptal
+curl -fsSL https://raw.githubusercontent.com/Cristhianzl/telegram-PTAL/main/.env.example \
+  -o ~/.config/ptal/.env
+chmod 600 ~/.config/ptal/.env
 ```
 
-At minimum you need a Telegram bot token and a GitHub credential.
+At minimum you need a Telegram bot token and a GitHub credential. Everything
+else has a working default, and `ptal config` can change any of it later.
 
 ### 4. Connect Telegram
 
 ```bash
-make setup
+ptal setup
 ```
 
 It validates the bot token, prints a link to your bot, waits for you to send
@@ -87,9 +96,12 @@ It validates the bot token, prints a link to your bot, waits for you to send
 ### 5. Verify, then install
 
 ```bash
-make doctor    # checks token, scopes, connectivity, and what is still missing
-make install   # registers the service to start with your computer
+ptal doctor    # checks token, scopes, connectivity, and what is still missing
+ptal install   # registers the service to start with your computer
 ```
+
+`ptal install` pins the daemon to your configuration directory, so it works
+regardless of where you were standing when you ran it.
 
 ---
 
