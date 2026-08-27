@@ -249,24 +249,6 @@ func uninstallLaunchd() error {
 	return nil
 }
 
-// ---------- Windows / Agendador de Tarefas ----------
-
-func installWindows(exe, wd string) error {
-	// /sc onlogon needs neither elevation nor a password; the service starts
-	// when the user logs in, the right behavior for a personal app.
-	cmd := fmt.Sprintf(`"%s" run`, exe)
-	if err := run("schtasks", "/create", "/tn", Name, "/sc", "onlogon",
-		"/rl", "limited", "/f", "/tr", cmd); err != nil {
-		return err
-	}
-	return run("schtasks", "/run", "/tn", Name)
-}
-
-func uninstallWindows() error {
-	_ = run("schtasks", "/end", "/tn", Name)
-	return run("schtasks", "/delete", "/tn", Name, "/f")
-}
-
 // ---------- helpers ----------
 
 func logDirectory() string {
