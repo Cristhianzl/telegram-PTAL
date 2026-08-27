@@ -45,7 +45,7 @@ COMMANDS
   help        This list
 
 Configuration lives in ~/.config/ptal/.env and is found from any directory.
-Run `ptal config` to see every setting with its current value.
+Run "ptal config" to see every setting with its current value.
 `
 
 func main() {
