@@ -24,8 +24,18 @@ builds:
 
 archives:
   - id: ptal
-    # A plain binary in a flat archive: the install script and the package
-    # managers all expect to find `ptal` at the archive root.
+    # The name must match what install.sh builds from `uname -s` and
+    # `uname -m`, which report Linux/Darwin and x86_64/arm64. The version is
+    # deliberately left out: the download URL already carries the tag, and
+    # omitting it keeps the install script from having to interpolate it
+    # twice.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    # A plain binary at the archive root: the install script and the package
+    # managers all expect to find `ptal` there.
     files:
       - README.md
       - LICENSE
@@ -34,7 +44,7 @@ archives:
       - goos: windows
         formats: [zip]
 
-checksums:
+checksum:
   name_template: checksums.txt
 
 changelog:
