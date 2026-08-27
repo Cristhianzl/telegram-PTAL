@@ -12,11 +12,8 @@ builds:
     binary: ptal
     env:
       - CGO_ENABLED=0
-    goos: [linux, darwin, windows]
+    goos: [linux, darwin]
     goarch: [amd64, arm64]
-    ignore:
-      - goos: windows
-        goarch: arm64
     flags:
       - -trimpath
     ldflags:
@@ -40,9 +37,6 @@ archives:
       - README.md
       - LICENSE
       - .env.example
-    format_overrides:
-      - goos: windows
-        formats: [zip]
 
 checksum:
   name_template: checksums.txt
@@ -74,7 +68,5 @@ release:
     ```bash
     curl -fsSL https://raw.githubusercontent.com/Cristhianzl/telegram-PTAL/main/install.sh | sh
     ```
-
-    **Windows** — download `ptal_Windows_x86_64.zip` below and extract it.
 
     Then run `ptal setup`, followed by `ptal install`.

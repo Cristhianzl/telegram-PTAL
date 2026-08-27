@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -130,15 +129,9 @@ func TestSaveChatIDPreservesTheFile(t *testing.T) {
 	}
 
 	// The file holds two secrets: it must not be world-readable.
-	//
-	// Windows has no Unix permission bits - os.Chmod cannot express 0600
-	// there, and access control goes through ACLs instead. Asserting the
-	// mode would fail for a reason that says nothing about the code.
-	if runtime.GOOS != "windows" {
-		st, _ := os.Stat(path)
-		if perm := st.Mode().Perm(); perm != 0o600 {
-			t.Errorf("permissions = %o, want 600", perm)
-		}
+	st, _ := os.Stat(path)
+	if perm := st.Mode().Perm(); perm != 0o600 {
+		t.Errorf("permissions = %o, want 600", perm)
 	}
 }
 

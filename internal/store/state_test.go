@@ -3,7 +3,6 @@ package store
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -95,11 +94,8 @@ func TestSaveIsAtomic(t *testing.T) {
 			t.Errorf("a temporary file was left behind: %s", e.Name())
 		}
 	}
-	// Windows has no Unix permission bits; access control there is by ACL.
-	if runtime.GOOS != "windows" {
-		if st, _ := os.Stat(path); st.Mode().Perm() != 0o600 {
-			t.Error("state should be private to the user")
-		}
+	if st, _ := os.Stat(path); st.Mode().Perm() != 0o600 {
+		t.Error("state should be private to the user")
 	}
 }
 

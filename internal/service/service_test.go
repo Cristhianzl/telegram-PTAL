@@ -87,8 +87,11 @@ func TestPathsStayInsideTheUserHome(t *testing.T) {
 	}
 }
 
-func TestManagerNamesEveryPlatform(t *testing.T) {
+func TestManagerNamesTheSupportedPlatforms(t *testing.T) {
 	got := Manager()
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skipf("PTAL does not support %s", runtime.GOOS)
+	}
 	if got == "" || got == runtime.GOOS {
 		t.Errorf("Manager() = %q, want a human-readable service manager name", got)
 	}

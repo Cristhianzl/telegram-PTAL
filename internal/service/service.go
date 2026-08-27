@@ -1,8 +1,13 @@
 // Package service registers PTAL to start with the system.
 //
-// Each operating system has its own mechanism, but none of them requires
-// administrator privileges: user-mode systemd, a LaunchAgent, and a task
-// scheduled at login.
+// Linux and macOS each have their own mechanism, and neither requires
+// administrator privileges: user-mode systemd and a LaunchAgent.
+//
+// Windows is not supported. Its service model differs enough that supporting
+// it properly means a Windows Service or a scheduled task, both with their own
+// elevation and console-window behavior — and untested code for a platform
+// nobody here runs is worse than no code at all. Use WSL2, where the Linux
+// path applies unchanged.
 package service
 
 import (
@@ -33,8 +38,6 @@ func Manager() string {
 		return "systemd (user)"
 	case "darwin":
 		return "launchd (LaunchAgent)"
-	case "windows":
-		return "Task Scheduler"
 	}
 	return runtime.GOOS
 }
@@ -58,10 +61,8 @@ func Install() error {
 		return installSystemd(exe, wd)
 	case "darwin":
 		return installLaunchd(exe, wd)
-	case "windows":
-		return installWindows(exe, wd)
 	}
-	return fmt.Errorf("unsupported system: %s", runtime.GOOS)
+	return unsupported()
 }
 
 // Uninstall removes the service registration.
@@ -71,10 +72,8 @@ func Uninstall() error {
 		return uninstallSystemd()
 	case "darwin":
 		return uninstallLaunchd()
-	case "windows":
-		return uninstallWindows()
 	}
-	return fmt.Errorf("unsupported system: %s", runtime.GOOS)
+	return unsupported()
 }
 
 // Restart reloads the daemon so a configuration change takes effect.
@@ -87,11 +86,8 @@ func Restart() error {
 	case "darwin":
 		target := fmt.Sprintf("gui/%d/%s", os.Getuid(), launchdLabel)
 		return run("launchctl", "kickstart", "-k", target)
-	case "windows":
-		_ = run("schtasks", "/end", "/tn", Name)
-		return run("schtasks", "/run", "/tn", Name)
 	}
-	return fmt.Errorf("unsupported system: %s", runtime.GOOS)
+	return unsupported()
 }
 
 // Status describes whether the service is installed and running.
@@ -109,11 +105,6 @@ func Status() Info {
 		info.Installed = fileExists(info.UnitPath)
 		out, _ := exec.Command("launchctl", "list").Output()
 		info.Running = strings.Contains(string(out), launchdLabel)
-	case "windows":
-		out, err := exec.Command("schtasks", "/query", "/tn", Name).Output()
-		info.Installed = err == nil
-		info.Running = info.Installed && strings.Contains(string(out), "Running")
-		info.Detail = "task scheduled at login"
 	}
 	return info
 }
@@ -280,13 +271,16 @@ func uninstallWindows() error {
 
 func logDirectory() string {
 	home, _ := os.UserHomeDir()
-	switch runtime.GOOS {
-	case "darwin":
+	if runtime.GOOS == "darwin" {
 		return filepath.Join(home, "Library", "Logs")
-	case "windows":
-		return filepath.Join(os.Getenv("LOCALAPPDATA"), "PTAL")
 	}
 	return filepath.Join(home, ".local", "state", "ptal")
+}
+
+// unsupported explains what to do rather than only naming the platform.
+func unsupported() error {
+	return fmt.Errorf("PTAL supports Linux and macOS, not %s.\n"+
+		"  On Windows, run it inside WSL2 - the Linux path works unchanged", runtime.GOOS)
 }
 
 func run(name string, args ...string) error {

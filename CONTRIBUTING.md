@@ -22,7 +22,7 @@ binary free of transitive risk.
 make check     # vet plus tests with the race detector
 ```
 
-CI runs the same gates on Linux, macOS and Windows.
+CI runs the same gates on Linux and macOS.
 
 ## What a change needs
 
@@ -77,7 +77,7 @@ can increase message volume needs care:
 | `internal/engine` | Snapshot diffing, event rules, anti-spam guards, alert-type filtering. |
 | `internal/store` | State persisted between runs. |
 | `internal/telegram` | Bot API client and message rendering. |
-| `internal/service` | Registering the daemon with systemd, launchd, Task Scheduler. |
+| `internal/service` | Registering the daemon with systemd and launchd. |
 | `internal/runner` | The cycle that ties everything together. |
 
 Keep files under 500 lines and one responsibility each. If a file starts

@@ -24,8 +24,8 @@ First release.
 - Two read paths with automatic degradation: authenticated GraphQL for CI
   state, review decisions and merge status; REST search when an organization
   policy rejects the token.
-- Starts with the system through systemd, launchd or Task Scheduler, none of
-  which requires administrator privileges.
+- Starts with the system through systemd or launchd, neither of which requires
+  administrator privileges. Windows is not supported; WSL2 works.
 - Anti-spam guards: per-event fingerprints, grouping of non-urgent events,
   quiet hours, and an hourly ceiling.
 - `ptal doctor`, which checks the token, its scopes, the chat, connectivity and

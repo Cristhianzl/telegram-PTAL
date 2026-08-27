@@ -63,18 +63,17 @@ check:
 ci: check
 	$(GO) build ./...
 
-## dist: build for Linux, macOS and Windows
+## dist: build for Linux and macOS
 dist:
 	@mkdir -p dist
 	GOOS=linux   GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-linux-amd64   ./cmd/ptal
 	GOOS=linux   GOARCH=arm64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-linux-arm64   ./cmd/ptal
 	GOOS=darwin  GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-amd64  ./cmd/ptal
 	GOOS=darwin  GOARCH=arm64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-arm64  ./cmd/ptal
-	GOOS=windows GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS) -H=windowsgui" -o dist/$(BINARY)-windows-amd64.exe ./cmd/ptal
 	@ls -lh dist/
 
 ## clean: remove binaries and local state
 clean:
-	rm -rf dist $(BINARY) $(BINARY).exe state.json state.json.tmp
+	rm -rf dist $(BINARY) state.json state.json.tmp
 
 .PHONY: help build setup doctor once panel run install uninstall status test check ci dist clean

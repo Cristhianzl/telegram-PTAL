@@ -20,8 +20,8 @@ detect_platform() {
   case "$os" in
     Linux)  os=Linux ;;
     Darwin) os=Darwin ;;
-    *) die "unsupported operating system: $os. On Windows, download the zip from
-       https://github.com/$REPO/releases" ;;
+    *) die "PTAL supports Linux and macOS, not $os.
+       On Windows, run it inside WSL2 - the Linux path works unchanged." ;;
   esac
 
   case "$arch" in

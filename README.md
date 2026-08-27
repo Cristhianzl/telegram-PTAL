@@ -30,8 +30,8 @@ opened 2 days ago
 
 ## Requirements
 
-- **Linux, macOS or Windows.** All three are supported, with no administrator
-  privileges required.
+- **Linux or macOS.** No administrator privileges required. Windows is not
+  supported; use WSL2, where the Linux path works unchanged.
 - **A GitHub credential** — the [GitHub CLI](https://cli.github.com) if you
   already use it, or a personal access token.
 - **A Telegram bot token** — see step 1 below.
@@ -297,7 +297,6 @@ first without connecting the bot.
 |---|---|---|
 | Linux | user-mode systemd + `loginctl enable-linger` | no |
 | macOS | LaunchAgent with `RunAtLoad` and `KeepAlive/NetworkState` | no |
-| Windows | Task Scheduler, triggered at logon | no |
 
 `ptal install` detects the system and writes the right unit. On macOS,
 `KeepAlive/NetworkState` means the daemon only runs when the network is up. On
@@ -376,7 +375,7 @@ confirmed across two consecutive cycles.
 ```bash
 make test     # all tests
 make check    # vet plus tests with the race detector
-make dist     # binaries for Linux, macOS and Windows
+make dist     # binaries for Linux and macOS
 ```
 
 No external dependencies — the standard library only.

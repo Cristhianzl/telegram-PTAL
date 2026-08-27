@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -32,8 +32,8 @@ jobs:
       - run: go build ./...
 
   # A cross-compilation check: the service installer has a code path per
-  # operating system, and a build tag mistake in one of them would otherwise
-  # only surface at release time.
+  # operating system, and a mistake in one of them would otherwise only
+  # surface at release time.
   cross-compile:
     runs-on: ubuntu-latest
     steps:
