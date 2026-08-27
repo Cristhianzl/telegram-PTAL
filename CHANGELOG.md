@@ -7,21 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
-
-- `ptal config` reads and changes settings from the terminal, with validation
-  before anything is written and an automatic service restart so the change
-  actually takes effect.
-- `ptal events` lists every alert type, what triggers it, and whether it is on.
-- `MUTE_EVENTS` and `ALERT_ON` control which alert types are delivered. Muting
-  happens before deduplication, so unmuting later still delivers the event.
-- `install.sh` for one-line installation on macOS and Linux, with checksum
-  verification.
-- Release automation through goreleaser: tagged builds publish binaries for
-  Linux, macOS and Windows on amd64 and arm64.
-- Tests for the service package, covering the systemd unit and launchd plist
-  templates.
-
 ## [0.1.0] - 2026-08-27
 
 First release.
@@ -45,6 +30,13 @@ First release.
   quiet hours, and an hourly ceiling.
 - `ptal doctor`, which checks the token, its scopes, the chat, connectivity and
   the service, and explains what is missing.
+- `ptal config` reads and changes settings from the terminal, with validation
+  before anything is written and an automatic service restart so the change
+  takes effect.
+- `ptal events` lists every alert type, what triggers it, and whether it is on.
+  `MUTE_EVENTS` and `ALERT_ON` control which ones are delivered.
+- One-line install script for macOS and Linux, with checksum verification.
+- A container image, and a documented path for running on GitHub Actions.
 
 ### Notes
 
