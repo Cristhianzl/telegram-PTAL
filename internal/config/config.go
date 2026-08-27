@@ -69,6 +69,9 @@ type Config struct {
 	ReviewModel string
 	// ReviewTimeout bounds a single review.
 	ReviewTimeout time.Duration
+	// ReviewInstructions are added to every review. Per-review instructions
+	// are appended after these.
+	ReviewInstructions string
 
 	// SourcePath is the .env file the configuration came from, so `setup`
 	// can write back into it.
@@ -157,6 +160,7 @@ func Load() (*Config, error) {
 	c.ReviewRepos = splitList(get("REVIEW_REPOS"))
 	c.ReviewRulesDir = get("REVIEW_RULES_DIR")
 	c.ReviewModel = get("REVIEW_MODEL")
+	c.ReviewInstructions = get("REVIEW_INSTRUCTIONS")
 	c.ReviewTimeout = 15 * time.Minute
 	if d, err := time.ParseDuration(get("REVIEW_TIMEOUT")); err == nil && d > time.Minute {
 		c.ReviewTimeout = d

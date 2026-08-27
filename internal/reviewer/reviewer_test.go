@@ -1,6 +1,7 @@
 package reviewer
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -163,5 +164,59 @@ func TestOwnPullRequestRefusalIsRecognized(t *testing.T) {
 	}
 	if isOwnPullRequest("network unreachable") {
 		t.Error("an unrelated failure must not be mistaken for it")
+	}
+}
+
+// Instructions steer what the review looks at; they must not be able to
+// replace the output contract, or publishing breaks.
+func TestInstructionsSitBeforeTheOutputRules(t *testing.T) {
+	prompt := fmt.Sprintf(defaultPrompt, "main", instructionBlock("only flag blockers"))
+
+	idx := strings.Index(prompt, "only flag blockers")
+	verdictIdx := strings.Index(prompt, "VERDICT: approve")
+
+	if idx < 0 {
+		t.Fatal("the instructions did not reach the prompt")
+	}
+	if verdictIdx < idx {
+		t.Error("the verdict contract must come after the instructions, so it wins")
+	}
+	if !strings.Contains(prompt, "reviewing-code skill") {
+		t.Error("the standing rules must survive alongside the instructions")
+	}
+}
+
+func TestEmptyInstructionsAddNothing(t *testing.T) {
+	if got := instructionBlock("   "); got != "" {
+		t.Errorf("blank instructions should add nothing, got %q", got)
+	}
+
+	plain := fmt.Sprintf(defaultPrompt, "main", instructionBlock(""))
+	if strings.Contains(plain, "Additional instructions") {
+		t.Error("the heading should be absent when there are no instructions")
+	}
+}
+
+// A per-review note narrows the focus; it does not discard preferences that
+// always apply.
+func TestCombineInstructionsKeepsBoth(t *testing.T) {
+	got := CombineInstructions("always check for secrets", "focus on the auth changes")
+
+	for _, want := range []string{"always check for secrets", "focus on the auth changes"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("combined instructions lost %q: %q", want, got)
+		}
+	}
+}
+
+func TestCombineInstructionsHandlesEmpties(t *testing.T) {
+	if got := CombineInstructions("", "just this"); got != "just this" {
+		t.Errorf("got %q", got)
+	}
+	if got := CombineInstructions("just standing", ""); got != "just standing" {
+		t.Errorf("got %q", got)
+	}
+	if got := CombineInstructions("  ", "  "); got != "" {
+		t.Errorf("two blanks should combine to nothing, got %q", got)
 	}
 }

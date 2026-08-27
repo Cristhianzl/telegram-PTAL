@@ -110,12 +110,12 @@ func (r *Runner) handleReviewCallback(ctx context.Context, q *telegram.CallbackQ
 	// than the polling one.
 	go func() {
 		defer r.reviews.release(key)
-		r.runReview(context.Background(), repo, number)
+		r.runReview(context.Background(), repo, number, "")
 	}()
 }
 
 // runReview performs the review and reports it in the chat.
-func (r *Runner) runReview(ctx context.Context, repo string, number int) {
+func (r *Runner) runReview(ctx context.Context, repo string, number int, instructions string) {
 	rules := r.cfg.ReviewRulesDir
 	if rules == "" {
 		rules = reviewer.DefaultRulesDir(r.cfg.Dir())
@@ -140,9 +140,10 @@ func (r *Runner) runReview(ctx context.Context, repo string, number int) {
 	}
 
 	rv := reviewer.New(reviewer.Options{
-		RulesDir: rules,
-		Timeout:  r.cfg.ReviewTimeout,
-		Model:    r.cfg.ReviewModel,
+		RulesDir:     rules,
+		Timeout:      r.cfg.ReviewTimeout,
+		Model:        r.cfg.ReviewModel,
+		Instructions: reviewer.CombineInstructions(r.cfg.ReviewInstructions, instructions),
 	})
 
 	started := time.Now()

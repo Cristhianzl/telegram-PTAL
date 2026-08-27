@@ -114,6 +114,48 @@ ptal review api 412 --dry-run     # print it, publish nothing
 `--dry-run` ignores the allowlist, because it cannot touch GitHub. It is the
 right way to see what a review looks like before enabling a repository.
 
+## Steering a review
+
+Anything passed with `-m` is added to the prompt, between the diff command and
+the output rules:
+
+```bash
+ptal review api 412 -m "focus on the auth changes"
+ptal review api 412 -m "this is a hotfix — only flag blockers"
+ptal review api 412 -m "the author is new to Go, explain the why"
+```
+
+In Telegram, everything after the number:
+
+```
+/review api 412 focus on the auth changes
+```
+
+`REVIEW_INSTRUCTIONS` adds the same text to every review, and per-review
+instructions are appended after it rather than replacing it:
+
+```bash
+ptal config review-instructions "Always check for hardcoded credentials."
+```
+
+### Instructions change the verdict, and the verdict is an action
+
+This is worth seeing before you rely on it. The same pull request, reviewed
+twice:
+
+| | Default | `-m "only report Blockers"` |
+|---|---|---|
+| Output | 7 findings across 3 severities | one line |
+| Verdict | `request_changes` | **`approve`** |
+
+Both are correct — the second was asked to ignore everything below Blocker,
+and found no Blockers. But the verdict is what PTAL executes against GitHub,
+so an instruction that narrows the review also narrows what can block a merge.
+
+Instructions are placed **before** the output rules on purpose, so they cannot
+redefine the verdict format and break publishing. They can still change which
+verdict is reached. Use `--dry-run` when trying out a new phrasing.
+
 ## The verdict
 
 The review ends with a machine-readable line:

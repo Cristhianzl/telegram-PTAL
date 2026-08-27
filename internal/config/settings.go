@@ -96,6 +96,11 @@ var settings = []Setting{
 		Validate: nil,
 	},
 	{
+		Key:      "REVIEW_INSTRUCTIONS",
+		Summary:  "Extra instructions added to every review.",
+		Validate: nil,
+	},
+	{
 		Key:      "REVIEW_MODEL",
 		Summary:  "Model override for reviews. Empty uses the CLI default.",
 		Validate: nil,
@@ -194,6 +199,11 @@ func (c *Config) Effective(key string) string {
 			return "(default: reviewer-rules/)"
 		}
 		return c.ReviewRulesDir
+	case "REVIEW_INSTRUCTIONS":
+		if c.ReviewInstructions == "" {
+			return "(none)"
+		}
+		return c.ReviewInstructions
 	case "REVIEW_MODEL":
 		if c.ReviewModel == "" {
 			return "(CLI default)"

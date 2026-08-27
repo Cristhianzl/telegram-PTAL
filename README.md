@@ -302,6 +302,13 @@ ptal config review-repos acme/api,my-org
 ptal config review-rules-dir ~/.config/ptal/reviewer-rules
 ```
 
+You can steer a single review:
+
+```bash
+ptal review acme/api 412 -m "focus on the auth changes"
+ptal review acme/api 412 -m "hotfix — only flag blockers"
+```
+
 Try it without publishing anything first:
 
 ```bash

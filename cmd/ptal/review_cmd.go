@@ -16,11 +16,19 @@ import (
 const reviewUsage = `ptal review - review a pull request with Claude Code
 
 USAGE
-  ptal review <repo> <number> [--dry-run]
+  ptal review <repo> <number> [-m "instructions"] [--dry-run]
 
 EXAMPLES
   ptal review acme/api 412
-  ptal review api 412 --dry-run     # print the review, publish nothing
+  ptal review api 412 --dry-run                  # print it, publish nothing
+  ptal review api 412 -m "focus on the auth changes"
+  ptal review api 412 -m "this is a hotfix, only flag blockers"
+
+Anything passed with -m is added to the standard prompt, so the review still
+follows the project rules and still produces a verdict. Use it to steer what
+gets looked at, not to replace the rules.
+
+REVIEW_INSTRUCTIONS adds the same thing to every review.
 
 The review runs Claude Code headlessly against a fresh checkout, using the
 rules in REVIEW_RULES_DIR. Claude is given read-only tools; publishing the
@@ -36,13 +44,23 @@ func cmdReview(args []string) error {
 	}
 
 	dryRun := false
+	instructions := ""
 	var positional []string
-	for _, a := range args {
-		if a == "--dry-run" || a == "-n" {
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--dry-run", "-n":
 			dryRun = true
-			continue
+		case "-m", "--message", "--instructions":
+			if i+1 >= len(args) {
+				return fmt.Errorf("-m needs the instructions after it, in quotes:\n" +
+					`  ptal review acme/api 412 -m "focus on the auth changes"`)
+			}
+			i++
+			instructions = args[i]
+		default:
+			positional = append(positional, args[i])
 		}
-		positional = append(positional, a)
 	}
 	if len(positional) < 2 {
 		return fmt.Errorf("usage: ptal review <repo> <number> [--dry-run]")
@@ -80,13 +98,17 @@ func cmdReview(args []string) error {
 	}
 
 	rv := reviewer.New(reviewer.Options{
-		RulesDir: rules,
-		Timeout:  cfg.ReviewTimeout,
-		Model:    cfg.ReviewModel,
-		DryRun:   dryRun,
+		RulesDir:     rules,
+		Timeout:      cfg.ReviewTimeout,
+		Model:        cfg.ReviewModel,
+		DryRun:       dryRun,
+		Instructions: reviewer.CombineInstructions(cfg.ReviewInstructions, instructions),
 	})
 
 	fmt.Printf("Reviewing %s#%d\n", repo, number)
+	if instructions != "" {
+		fmt.Printf("  with: %s\n", instructions)
+	}
 	result, err := rv.Review(context.Background(), repo, number, func(stage string) {
 		fmt.Printf("  %s…\n", stage)
 	})

@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   requested. Uses the CLI's existing subscription, not an API key.
   Also available as `ptal review <repo> <number>` and `/review` in Telegram.
 - Reviewing is off until repositories are named in `REVIEW_REPOS`.
+- `ptal review ... -m "..."` and `/review <repo> <n> <instructions>` steer a
+  single review; `REVIEW_INSTRUCTIONS` steers every one. Instructions sit
+  before the output rules so they cannot break the verdict contract.
 
 - `ptal start`, `stop`, `restart`, `pause` and `resume`. Stopping the daemon
   previously meant reaching for `systemctl` or `launchctl` directly.

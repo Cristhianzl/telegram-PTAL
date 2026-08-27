@@ -62,8 +62,12 @@ type Options struct {
 	DryRun bool
 	// Model overrides the model Claude uses.
 	Model string
-	// Prompt overrides the instruction sent to Claude.
+	// Prompt replaces the instruction sent to Claude entirely.
 	Prompt string
+	// Instructions are added to the standard prompt rather than replacing
+	// it, so the review still follows the project rules and still emits a
+	// verdict line.
+	Instructions string
 }
 
 // DefaultTimeout is generous: a real review reads a diff and several files.
@@ -96,7 +100,7 @@ The diff under review is the difference between this branch and its merge
 base. Start with:
 
   git diff $(git merge-base HEAD origin/%s)...HEAD
-
+%s
 Output ONLY the review comment itself, in Markdown, with no preamble and no
 closing remarks. The last line of your output must be exactly one of:
 
@@ -239,7 +243,7 @@ func (r *Reviewer) installRules(dir string) error {
 func (r *Reviewer) runClaude(ctx context.Context, dir, baseBranch string) (string, error) {
 	prompt := r.opts.Prompt
 	if prompt == "" {
-		prompt = fmt.Sprintf(defaultPrompt, baseBranch)
+		prompt = fmt.Sprintf(defaultPrompt, baseBranch, instructionBlock(r.opts.Instructions))
 	}
 
 	args := []string{
@@ -337,6 +341,37 @@ func extractVerdict(text string) (Verdict, string) {
 		return VerdictRequestChanges, body
 	}
 	return VerdictComment, body
+}
+
+// CombineInstructions merges the standing instructions with the ones given
+// for a single review. Both are kept: a per-review note narrows the focus, it
+// does not discard the preferences that always apply.
+func CombineInstructions(standing, perReview string) string {
+	standing = strings.TrimSpace(standing)
+	perReview = strings.TrimSpace(perReview)
+	switch {
+	case standing == "":
+		return perReview
+	case perReview == "":
+		return standing
+	default:
+		return standing + "\n\n" + perReview
+	}
+}
+
+// instructionBlock places the caller's instructions between the diff command
+// and the output rules.
+//
+// The position is deliberate. Putting them last would let an instruction
+// override the verdict format and break publishing; putting them first would
+// bury them under the standing rules. Between the two, they steer what gets
+// looked at while the output contract still has the final word.
+func instructionBlock(instructions string) string {
+	instructions = strings.TrimSpace(instructions)
+	if instructions == "" {
+		return ""
+	}
+	return "\nAdditional instructions for this review:\n\n" + instructions + "\n"
 }
 
 func truncate(s string, n int) string {

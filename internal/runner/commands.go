@@ -21,7 +21,7 @@ const telegramHelp = `<b>PTAL commands</b>
 /clear - delete every message I have sent
 /pause 2h - stop alerting for a while
 /resume - start alerting again
-/review &lt;repo&gt; &lt;number&gt; - review a PR with Claude
+/review &lt;repo&gt; &lt;number&gt; [instructions] - review a PR with Claude
 /help - this
 
 <i>Settings live on the machine running me: `+"`ptal config`"+`</i>`
@@ -138,6 +138,8 @@ func (r *Runner) reviewFromTelegram(ctx context.Context, args string) {
 		r.reply(ctx, "That is not a pull request number.")
 		return
 	}
+	// Everything after the number steers this one review.
+	instructions := strings.TrimSpace(strings.Join(fields[2:], " "))
 	if !r.cfg.ReviewEnabledFor(repo) {
 		r.reply(ctx, "Reviewing is not enabled for "+telegram.EscapeHTML(repo)+
 			".\n\n<i>Enable it with</i> <code>ptal config review-repos "+
@@ -152,7 +154,7 @@ func (r *Runner) reviewFromTelegram(ctx context.Context, args string) {
 	}
 	go func() {
 		defer r.reviews.release(key)
-		r.runReview(context.Background(), repo, number)
+		r.runReview(context.Background(), repo, number, instructions)
 	}()
 }
 
