@@ -297,7 +297,13 @@ func cmdRepo(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("which repository?\n" +
 			"  ptal repo owner/name\n" +
-			"  ptal repo <short-name>   (matched against WATCH_REPOS)")
+			"  ptal repo <short-name>          (matched against WATCH_REPOS)\n" +
+			"  ptal repo <short-name> me       (only the ones you opened)\n" +
+			"  ptal repo <short-name> <user>   (only that person's)")
+	}
+	author := ""
+	if len(args) > 1 {
+		author = args[1]
 	}
 
 	cfg, state, err := prepareAllowNoChat()
@@ -316,12 +322,16 @@ func cmdRepo(args []string) error {
 	if err := r.Source().Resolve(ctx); err != nil {
 		return err
 	}
-	prs, err := r.Source().RepoPullRequests(ctx, repo, 100)
+	prs, err := r.Source().RepoPullRequests(ctx, repo, author, 100)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%s · %d open\n\n", repo, len(prs))
+	if author != "" {
+		fmt.Printf("%s · %d open by %s\n\n", repo, len(prs), displayAuthor(author, r.Source().Login()))
+	} else {
+		fmt.Printf("%s · %d open\n\n", repo, len(prs))
+	}
 	if len(prs) == 0 {
 		return nil
 	}
@@ -469,6 +479,17 @@ func prepare() (*config.Config, *store.State, error) {
 		return nil, nil, fmt.Errorf("reading state: %w", err)
 	}
 	return cfg, state, nil
+}
+
+// displayAuthor renders "me" as the resolved login, so the output says who
+// it actually filtered by.
+func displayAuthor(author, login string) string {
+	if author == "me" || author == "@me" {
+		if login != "" {
+			return "@" + login
+		}
+	}
+	return "@" + strings.TrimPrefix(author, "@")
 }
 
 func truncate(s string, n int) string {

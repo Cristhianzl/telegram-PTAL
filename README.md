@@ -217,7 +217,7 @@ ptal events      List alert types and which are on
 ptal doctor      Diagnose token, chat, connectivity and service
 ptal once        Run a single cycle and print what it found
 ptal panel       Send a panel with the current state to Telegram
-ptal repo <name> List every open PR in a repository
+ptal repo <name> List every open PR in a repository (add a user to filter)
 
 ptal install     Register to start with the system
 ptal uninstall   Remove the registration
@@ -277,6 +277,8 @@ every open pull request in a repository, whoever they belong to.
 ```
 /prs acme/api        full path
 /prs api             short name, matched against WATCH_REPOS
+/prs api me          only the ones you opened
+/prs api alice       only that person's
 ```
 
 ```
@@ -289,7 +291,18 @@ every open pull request in a repository, whoever they belong to.
   @bob · ✅ CI · ✅ approved · yesterday
 ```
 
-The same thing from the terminal is `ptal repo api`.
+The same from the terminal:
+
+```bash
+ptal repo api           # everyone's
+ptal repo api me        # only yours
+ptal repo api alice     # only alice's
+```
+
+The filter is on **authorship**, not involvement: "show me mine in this
+project" means the ones you opened. What is tied to you more broadly — reviews
+requested, mentions, assignments — is what the rest of the tool already
+reports, and `ptal once` lists it.
 
 This is on demand only — it never feeds the alerting loop, which would
 otherwise start reporting other people's work.

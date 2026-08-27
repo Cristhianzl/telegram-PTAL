@@ -141,15 +141,23 @@ func RenderPanel(snap *githubapi.Snapshot) string {
 //
 // Unlike the panel, this is not about you: it shows authors, because the
 // point of asking about a whole project is seeing who is waiting on what.
-func RenderRepoList(repo string, prs []*githubapi.PullRequest, limit int) string {
+func RenderRepoList(repo, author string, prs []*githubapi.PullRequest, limit int) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "📂 <b>%s</b>\n", esc(repo))
 
 	if len(prs) == 0 {
-		b.WriteString("\n<i>No open pull requests.</i>")
+		if author != "" {
+			fmt.Fprintf(&b, "\n<i>No open pull requests by %s.</i>", esc(author))
+		} else {
+			b.WriteString("\n<i>No open pull requests.</i>")
+		}
 		return b.String()
 	}
-	fmt.Fprintf(&b, "<i>%d open</i>\n\n", len(prs))
+	if author != "" {
+		fmt.Fprintf(&b, "<i>%d open by %s</i>\n\n", len(prs), esc(author))
+	} else {
+		fmt.Fprintf(&b, "<i>%d open</i>\n\n", len(prs))
+	}
 
 	shown := prs
 	if limit > 0 && len(shown) > limit {

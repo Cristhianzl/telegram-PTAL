@@ -15,6 +15,7 @@ const telegramHelp = `<b>PTAL commands</b>
 
 /prs - your pull requests right now
 /prs &lt;repo&gt; - every open PR in a repository
+/prs &lt;repo&gt; me - only the ones you opened
 /status - last sync, mode, rate limit
 /clear - delete every message I have sent
 /pause 2h - stop alerting for a while
@@ -153,19 +154,23 @@ func (r *Runner) replyWithRepo(ctx context.Context, input string) {
 		return
 	}
 
-	repo, err := githubapi.ResolveRepo(input, r.cfg.WatchRepos)
+	// A second word narrows to one author: "/prs langflow me".
+	name, author, _ := strings.Cut(input, " ")
+	author = strings.TrimSpace(author)
+
+	repo, err := githubapi.ResolveRepo(name, r.cfg.WatchRepos)
 	if err != nil {
 		r.reply(ctx, telegram.EscapeHTML(err.Error()))
 		return
 	}
 
-	prs, err := r.source.RepoPullRequests(ctx, repo, 50)
+	prs, err := r.source.RepoPullRequests(ctx, repo, author, 50)
 	if err != nil {
 		r.reply(ctx, "Could not read "+telegram.EscapeHTML(repo)+": "+
 			telegram.EscapeHTML(err.Error()))
 		return
 	}
-	r.reply(ctx, telegram.RenderRepoList(repo, prs, 25))
+	r.reply(ctx, telegram.RenderRepoList(repo, author, prs, 25))
 }
 
 func (r *Runner) replyWithStatus(ctx context.Context) {

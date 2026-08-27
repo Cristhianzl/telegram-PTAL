@@ -14,7 +14,7 @@ import (
 // looks at what is tied to the authenticated user. It exists for on-demand
 // queries — "what is open on this project right now" — and never feeds the
 // alerting loop, which would otherwise start reporting other people's work.
-func (c *Client) RepoPullRequests(ctx context.Context, repo string, limit int) ([]*PullRequest, error) {
+func (c *Client) RepoPullRequests(ctx context.Context, repo, author string, limit int) ([]*PullRequest, error) {
 	if !strings.Contains(repo, "/") {
 		return nil, fmt.Errorf("expected owner/name, got %q", repo)
 	}
@@ -28,7 +28,7 @@ func (c *Client) RepoPullRequests(ctx context.Context, repo string, limit int) (
     nodes { ...prFields }
   }
 }
-%s`, "is:open is:pr archived:false repo:"+repo, limit, prFieldsFragment)
+%s`, repoQuery(repo, author), limit, prFieldsFragment)
 
 	body, err := c.do(ctx, query)
 	if err != nil {
@@ -60,12 +60,12 @@ func (c *Client) RepoPullRequests(ctx context.Context, repo string, limit int) (
 
 // RepoPullRequestsPublic is the same query through REST search, for when the
 // GraphQL path is unavailable.
-func (c *PublicClient) RepoPullRequests(ctx context.Context, repo string, limit int) ([]*PullRequest, error) {
+func (c *PublicClient) RepoPullRequests(ctx context.Context, repo, author string, limit int) ([]*PullRequest, error) {
 	if !strings.Contains(repo, "/") {
 		return nil, fmt.Errorf("expected owner/name, got %q", repo)
 	}
 
-	items, err := c.search(ctx, "is:open is:pr archived:false repo:"+repo)
+	items, err := c.search(ctx, repoQuery(repo, author))
 	if err != nil {
 		return nil, err
 	}
@@ -94,10 +94,34 @@ func (c *PublicClient) RepoPullRequests(ctx context.Context, repo string, limit 
 	return out, nil
 }
 
+// repoQuery builds the search for one repository, optionally narrowed to a
+// single author.
+//
+// The filter is on authorship rather than involvement, because "show me mine
+// in this project" means the ones you opened. What is tied to you more
+// broadly - reviews, mentions, assignments - is what the rest of the tool
+// already reports.
+func repoQuery(repo, author string) string {
+	q := "is:open is:pr archived:false repo:" + repo
+	if author != "" {
+		q += " author:" + author
+	}
+	return q
+}
+
 // RepoPullRequests on the Source picks whichever path is currently working.
-func (s *Source) RepoPullRequests(ctx context.Context, repo string, limit int) ([]*PullRequest, error) {
+func (s *Source) RepoPullRequests(ctx context.Context, repo, author string, limit int) ([]*PullRequest, error) {
+	// A bare "me" is resolved here rather than sent to GitHub: the public
+	// search path is unauthenticated and has no @me to resolve.
+	if author == "me" || author == "@me" {
+		author = s.login
+		if author == "" {
+			return nil, fmt.Errorf("cannot resolve \"me\": set GITHUB_LOGIN or use a token")
+		}
+	}
+
 	if s.mode == ModeRich && s.rich != nil {
-		prs, err := s.rich.RepoPullRequests(ctx, repo, limit)
+		prs, err := s.rich.RepoPullRequests(ctx, repo, author, limit)
 		if err == nil {
 			return prs, nil
 		}
@@ -107,7 +131,7 @@ func (s *Source) RepoPullRequests(ctx context.Context, repo string, limit int) (
 		}
 		s.switchMode(ModePublic, policyErr.Msg)
 	}
-	return s.public.RepoPullRequests(ctx, repo, limit)
+	return s.public.RepoPullRequests(ctx, repo, author, limit)
 }
 
 // ResolveRepo turns what someone typed into an "owner/name" pair.

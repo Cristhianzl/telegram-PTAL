@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   actually removed — Telegram refuses anything older than 48 hours.
 - `/prs <repo>` and `ptal repo <name>` list every open pull request in a
   repository, whoever they belong to. A bare name is matched against
-  `WATCH_REPOS`, so the owner does not have to be remembered. On demand only:
-  it never feeds the alerting loop.
+  `WATCH_REPOS`, so the owner does not have to be remembered. A second
+  argument narrows it to one author, with `me` as a shorthand for your own
+  login. On demand only: it never feeds the alerting loop.
 
 ### Fixed
 

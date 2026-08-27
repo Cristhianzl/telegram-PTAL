@@ -290,13 +290,65 @@ func TestRepoQueryHasNoUserFilter(t *testing.T) {
 	c := NewPublic("alice")
 	c.SetEndpoint(srv.URL)
 
-	if _, err := c.RepoPullRequests(context.Background(), "acme/api", 10); err != nil {
+	if _, err := c.RepoPullRequests(context.Background(), "acme/api", "", 10); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestRepoPullRequestsRejectsBareName(t *testing.T) {
-	if _, err := NewPublic("alice").RepoPullRequests(context.Background(), "api", 10); err == nil {
+	if _, err := NewPublic("alice").RepoPullRequests(context.Background(), "api", "", 10); err == nil {
 		t.Error("a name without an owner should be rejected before any request")
+	}
+}
+
+// A second argument narrows the listing to one author, which is what makes
+// "show me mine in this project" possible.
+func TestRepoQueryFiltersByAuthor(t *testing.T) {
+	if got := repoQuery("acme/api", ""); strings.Contains(got, "author:") {
+		t.Errorf("without an author there should be no filter: %q", got)
+	}
+	got := repoQuery("acme/api", "alice")
+	if !strings.Contains(got, "author:alice") {
+		t.Errorf("query = %q, want an author filter", got)
+	}
+	if !strings.Contains(got, "repo:acme/api") {
+		t.Errorf("query = %q, should still scope to the repository", got)
+	}
+}
+
+// "me" is resolved locally, because the public search path is
+// unauthenticated and GitHub has no @me to expand there.
+func TestMeResolvesToTheConfiguredLogin(t *testing.T) {
+	var seen string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = r.URL.Query().Get("q")
+		fmt.Fprint(w, `{"total_count":0,"items":[]}`)
+	}))
+	defer srv.Close()
+
+	src := NewSource("", "alice", nil, nil, 0, false)
+	src.public.SetEndpoint(srv.URL)
+
+	if _, err := src.RepoPullRequests(context.Background(), "acme/api", "me", 10); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(seen, "author:alice") {
+		t.Errorf("\"me\" should expand to the configured login, query was %q", seen)
+	}
+	if strings.Contains(seen, "@me") {
+		t.Errorf("@me must not reach an unauthenticated search: %q", seen)
+	}
+}
+
+func TestMeWithoutALoginIsAnError(t *testing.T) {
+	src := NewSource("", "", nil, nil, 0, false)
+
+	_, err := src.RepoPullRequests(context.Background(), "acme/api", "me", 10)
+
+	if err == nil {
+		t.Fatal("resolving \"me\" without a login should fail")
+	}
+	if !strings.Contains(err.Error(), "GITHUB_LOGIN") {
+		t.Errorf("the error should say how to fix it: %v", err)
 	}
 }
