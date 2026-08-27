@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # Only GitHub Actions: the Go module has no external dependencies, by design.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly

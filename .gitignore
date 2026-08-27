@@ -1,0 +1,17 @@
+# segredos — NUNCA commitar
+.env
+*.token
+
+# estado local
+state.json
+state.json.tmp
+*.db
+
+# build
+/dist/
+/pullalerts
+/pullalerts.exe
+
+# SO
+.DS_Store
+Thumbs.db
