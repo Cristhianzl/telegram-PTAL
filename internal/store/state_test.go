@@ -130,3 +130,91 @@ func TestSentLastHourCountsOnlyRecent(t *testing.T) {
 		t.Errorf("messages in the last hour = %d, want 2", got)
 	}
 }
+
+// Pausing must survive a restart, or a pause set from Telegram would be lost
+// the moment the daemon reloads.
+func TestPauseSurvivesReload(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	s, _ := Load(path)
+
+	until := time.Now().Add(2 * time.Hour)
+	s.Pause(until)
+	if err := s.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	again, _ := Load(path)
+	paused, got := again.Paused()
+	if !paused {
+		t.Fatal("the pause did not survive reloading")
+	}
+	if got.Sub(until.UTC()).Abs() > time.Second {
+		t.Errorf("paused until %s, want %s", got, until.UTC())
+	}
+}
+
+// An expired pause must read as not paused without anyone clearing it.
+func TestExpiredPauseLapsesOnItsOwn(t *testing.T) {
+	s := tempState(t)
+	s.Pause(time.Now().Add(-time.Minute))
+
+	if paused, _ := s.Paused(); paused {
+		t.Error("a pause in the past should have lapsed")
+	}
+}
+
+func TestResumeLiftsThePause(t *testing.T) {
+	s := tempState(t)
+	s.Pause(time.Now().Add(time.Hour))
+
+	s.Resume()
+
+	if paused, _ := s.Paused(); paused {
+		t.Error("Resume should lift the pause")
+	}
+}
+
+// The delete list is bounded: Telegram refuses to remove anything older than
+// 48 hours, so tracking without limit is pure growth.
+func TestTrackedMessagesAreBounded(t *testing.T) {
+	s := tempState(t)
+
+	for i := 1; i <= maxTrackedMessages+250; i++ {
+		s.TrackMessage(i)
+	}
+
+	tracked := s.TrackedMessages()
+	if len(tracked) != maxTrackedMessages {
+		t.Fatalf("tracked %d messages, want the cap of %d", len(tracked), maxTrackedMessages)
+	}
+	// The newest must be kept: those are the ones still deletable.
+	if tracked[len(tracked)-1] != maxTrackedMessages+250 {
+		t.Errorf("the newest message was dropped: last is %d", tracked[len(tracked)-1])
+	}
+}
+
+func TestTrackMessageIgnoresZero(t *testing.T) {
+	s := tempState(t)
+	s.TrackMessage(0)
+
+	if len(s.TrackedMessages()) != 0 {
+		t.Error("a zero message ID is not a real message and must not be tracked")
+	}
+}
+
+func TestForgetMessagesClearsThePanelToo(t *testing.T) {
+	s := tempState(t)
+	s.TrackMessage(1)
+	s.PanelMessageID = 42
+
+	s.ForgetMessages()
+
+	if len(s.TrackedMessages()) != 0 {
+		t.Error("the delete list should be empty")
+	}
+	// The panel is deleted along with everything else, so keeping its ID
+	// would make the next cycle try to edit a message that is gone.
+	if s.PanelMessageID != 0 {
+		t.Error("the panel ID should be cleared, since /clear deletes it too")
+	}
+}

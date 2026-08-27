@@ -49,8 +49,22 @@ type State struct {
 	LastErrorAt   time.Time `json:"last_error_at"`
 	LastError     string    `json:"last_error,omitempty"`
 
+	// PausedUntil suppresses delivery without stopping the daemon. Keeping
+	// the cycle running while paused is the whole point: state stays current,
+	// so resuming does not produce a flood of everything that changed.
+	PausedUntil time.Time `json:"paused_until,omitempty"`
+
 	// PanelMessageID is the pinned message the daemon edits each cycle.
 	PanelMessageID int `json:"panel_message_id,omitempty"`
+
+	// SentMessageIDs are the messages the bot posted, so /clear can remove
+	// them. Telegram will not delete anything older than 48 hours, so the
+	// list is trimmed to roughly that horizon.
+	SentMessageIDs []int `json:"sent_message_ids,omitempty"`
+
+	// LastUpdateID is the getUpdates cursor. Persisting it means a restart
+	// does not replay commands that were already handled.
+	LastUpdateID int64 `json:"last_update_id,omitempty"`
 
 	path string
 }
@@ -145,15 +159,55 @@ func (s *State) MarkSeen(fingerprint string) {
 	s.Fingerprints[fingerprint] = time.Now().UTC()
 }
 
+// maxTrackedMessages bounds the delete list. Telegram refuses to delete
+// anything older than 48 hours anyway, so tracking more is pure growth.
+const maxTrackedMessages = 500
+
 // RecordSend counts a delivered message, for the hourly ceiling.
 func (s *State) RecordSend() {
 	s.Sent = append(recentTimes(s.Sent, sentWindow), time.Now().UTC())
+}
+
+// TrackMessage remembers a message so /clear can delete it later.
+func (s *State) TrackMessage(id int) {
+	if id == 0 {
+		return
+	}
+	s.SentMessageIDs = append(s.SentMessageIDs, id)
+	if excess := len(s.SentMessageIDs) - maxTrackedMessages; excess > 0 {
+		s.SentMessageIDs = s.SentMessageIDs[excess:]
+	}
+}
+
+// TrackedMessages returns the messages eligible for deletion.
+func (s *State) TrackedMessages() []int {
+	return append([]int(nil), s.SentMessageIDs...)
+}
+
+// ForgetMessages clears the delete list.
+func (s *State) ForgetMessages() {
+	s.SentMessageIDs = nil
+	s.PanelMessageID = 0
 }
 
 // SentLastHour reports how many messages went out in the last hour.
 func (s *State) SentLastHour() int {
 	return len(recentTimes(s.Sent, sentWindow))
 }
+
+// Paused reports whether delivery is currently suppressed, and until when.
+func (s *State) Paused() (bool, time.Time) {
+	if s.PausedUntil.IsZero() || time.Now().After(s.PausedUntil) {
+		return false, time.Time{}
+	}
+	return true, s.PausedUntil
+}
+
+// Pause suppresses delivery until the given time.
+func (s *State) Pause(until time.Time) { s.PausedUntil = until.UTC() }
+
+// Resume lifts a pause.
+func (s *State) Resume() { s.PausedUntil = time.Time{} }
 
 // Path returns where the state is stored.
 func (s *State) Path() string { return s.path }

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `ptal start`, `stop`, `restart`, `pause` and `resume`. Stopping the daemon
+  previously meant reaching for `systemctl` or `launchctl` directly.
+- Pausing suppresses delivery without stopping the cycle, so resuming does not
+  produce a flood of everything that changed while you were away.
+- Telegram commands: `/prs`, `/status`, `/clear`, `/pause`, `/resume`, `/help`.
+  Only the configured chat is obeyed.
+- `/clear` deletes the messages the bot has sent, and reports how many were
+  actually removed — Telegram refuses anything older than 48 hours.
+
+### Fixed
+
+- Commands that take no arguments now reject extra ones. `ptal install --help`
+  used to install the service instead of printing help.
+
 ## [0.1.0] - 2026-08-27
 
 First release.

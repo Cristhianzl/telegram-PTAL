@@ -205,12 +205,62 @@ ptal events      List alert types and which are on
 ptal doctor      Diagnose token, chat, connectivity and service
 ptal once        Run a single cycle and print what it found
 ptal panel       Send a panel with the current state to Telegram
-ptal run         Keep running (what the service executes)
+
 ptal install     Register to start with the system
 ptal uninstall   Remove the registration
+ptal start       Start the daemon
+ptal stop        Stop it (it returns at the next boot)
+ptal restart     Restart it
+ptal pause 2h    Stop alerting for a while, without stopping
+ptal resume      Start alerting again
 ptal status      Show the service and the last sync
+
+ptal run         Keep running (what the service executes)
 ptal version     Print the version
+ptal help        This list
 ```
+
+### Stopping it
+
+There are two ways, and they mean different things.
+
+```bash
+ptal pause 2h    # keeps watching, just stops messaging you
+ptal stop        # stops the daemon; it comes back at the next boot
+ptal uninstall   # removes it from startup entirely
+```
+
+**Prefer `pause`.** It keeps the cycle running, so the state stays current and
+resuming does not bury you under everything that changed while you were away.
+Stopping the daemon means the next start has to catch up, and anything that
+happened in between is simply absorbed.
+
+```bash
+$ ptal pause 2h
+✓ paused for 2h0m0s, until 18:45
+  Still checking GitHub, just not messaging you.
+  Resume early with: ptal resume
+```
+
+### Telegram commands
+
+The bot answers commands in the chat, so you do not need the terminal:
+
+```
+/prs        your pull requests right now
+/status     last sync, mode, what is tracked
+/clear      delete every message the bot has sent
+/pause 2h   stop alerting for a while
+/resume     start alerting again
+/help       this list
+```
+
+`/clear` cleans up the chat. Telegram only lets a bot delete its own messages
+for 48 hours, so anything older stays — the reply tells you how many actually
+went rather than claiming a clean sweep.
+
+Only the chat from `ptal setup` is obeyed. Anyone can find a bot and message
+it; without that check a stranger could clear your history.
 
 ### `ptal config` — change settings from the terminal
 

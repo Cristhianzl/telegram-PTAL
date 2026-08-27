@@ -184,6 +184,49 @@ func (c *Client) Edit(ctx context.Context, chatID string, messageID int, text st
 	return err
 }
 
+// MaxDeleteBatch is how many messages deleteMessages accepts at once.
+const MaxDeleteBatch = 100
+
+// Delete removes messages the bot sent.
+//
+// Telegram only allows a bot to delete its own messages for 48 hours, and
+// silently refuses older ones. The count of what actually went is returned so
+// the caller can be honest about it rather than claiming a clean sweep.
+func (c *Client) Delete(ctx context.Context, chatID string, messageIDs []int) (int, error) {
+	deleted := 0
+	var lastErr error
+
+	for start := 0; start < len(messageIDs); start += MaxDeleteBatch {
+		end := min(start+MaxDeleteBatch, len(messageIDs))
+		batch := messageIDs[start:end]
+
+		err := c.call(ctx, "deleteMessages", map[string]any{
+			"chat_id":     chatID,
+			"message_ids": batch,
+		}, nil)
+		if err == nil {
+			deleted += len(batch)
+			continue
+		}
+
+		// A batch fails as a unit if any message in it is too old, so fall
+		// back to one at a time to salvage the ones still deletable.
+		for _, id := range batch {
+			if e := c.call(ctx, "deleteMessage", map[string]any{
+				"chat_id": chatID, "message_id": id,
+			}, nil); e == nil {
+				deleted++
+			} else {
+				lastErr = e
+			}
+		}
+	}
+	if deleted == 0 && lastErr != nil {
+		return 0, lastErr
+	}
+	return deleted, nil
+}
+
 // Pin pins the message to the top of the conversation.
 func (c *Client) Pin(ctx context.Context, chatID string, messageID int) error {
 	return c.call(ctx, "pinChatMessage", map[string]any{

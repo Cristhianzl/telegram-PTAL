@@ -187,6 +187,12 @@ func humanAge(t time.Time) string {
 	}
 }
 
+// EscapeHTML is esc, exported for callers outside this package.
+func EscapeHTML(s string) string { return esc(s) }
+
+// HumanAge is humanAge, exported for callers outside this package.
+func HumanAge(t time.Time) string { return humanAge(t) }
+
 // esc protects text coming from GitHub: pull request titles frequently
 // contain <, > and &, and Telegram rejects the whole message if the HTML
 // breaks.

@@ -28,6 +28,9 @@ type Runner struct {
 
 	quiet engine.QuietHours
 	kinds engine.KindFilter
+
+	// botUsername strips the @mention Telegram appends to commands in groups.
+	botUsername string
 }
 
 // New assembles a fully configured runner.
@@ -110,8 +113,19 @@ func (r *Runner) Once(ctx context.Context) (*githubapi.Snapshot, int, error) {
 		Kinds:      r.kinds,
 	})
 
+	// A pause suppresses delivery but not the cycle: the state keeps
+	// advancing, so resuming does not replay everything that happened.
+	paused, until := r.state.Paused()
+	if paused {
+		for _, e := range events {
+			r.state.MarkSeen(e.Fingerprint())
+		}
+		r.log.Printf("paused until %s · %d events absorbed silently",
+			until.Local().Format("15:04"), len(events))
+	}
+
 	sent := 0
-	if !firstRun && !modeChanged {
+	if !firstRun && !modeChanged && !paused {
 		sent += r.deliver(ctx, urgent)
 		sent += r.deliver(ctx, batched)
 	} else {
@@ -160,11 +174,13 @@ func (r *Runner) deliver(ctx context.Context, batch engine.Batch) int {
 		}}
 	}
 
-	if _, err := r.tg.Send(ctx, r.cfg.TelegramChat, text, opts); err != nil {
+	msg, err := r.tg.Send(ctx, r.cfg.TelegramChat, text, opts)
+	if err != nil {
 		r.log.Printf("failed to send on Telegram: %v", err)
 		return 0
 	}
 	r.state.RecordSend()
+	r.state.TrackMessage(msg.MessageID)
 	return 1
 }
 
@@ -192,6 +208,7 @@ func (r *Runner) Panel(ctx context.Context, snap *githubapi.Snapshot, pin bool) 
 		return err
 	}
 	r.state.PanelMessageID = msg.MessageID
+	r.state.TrackMessage(msg.MessageID)
 	if pin {
 		if err := r.tg.Pin(ctx, r.cfg.TelegramChat, msg.MessageID); err != nil {
 			r.log.Printf("could not pin the panel: %v", err)
@@ -206,8 +223,19 @@ func (r *Runner) notify(ctx context.Context, text string, silent bool) {
 	if r.cfg.TelegramChat == "" {
 		return
 	}
-	if _, err := r.tg.Send(ctx, r.cfg.TelegramChat, text, telegram.SendOptions{Silent: silent}); err != nil {
+	msg, err := r.tg.Send(ctx, r.cfg.TelegramChat, text, telegram.SendOptions{Silent: silent})
+	if err != nil {
 		r.log.Printf("failed to notify on Telegram: %v", err)
+		return
+	}
+	r.state.TrackMessage(msg.MessageID)
+}
+
+// resolveBotUsername is best-effort: without it, commands still work in a
+// private chat, which is where PTAL is used.
+func (r *Runner) resolveBotUsername(ctx context.Context) {
+	if bot, err := r.tg.GetMe(ctx); err == nil {
+		r.botUsername = bot.Username
 	}
 }
 
@@ -218,6 +246,11 @@ func (r *Runner) notify(ctx context.Context, text string, silent bool) {
 // attempts from several machines do not line up.
 func (r *Runner) Run(ctx context.Context) error {
 	r.log.Printf("starting · interval %s · mode %s", r.cfg.PollInterval, r.source.Mode())
+
+	// Commands are answered on their own goroutine: long polling blocks for
+	// up to 30 seconds at a time and must not delay the sync cycle.
+	r.resolveBotUsername(ctx)
+	go r.ListenCommands(ctx)
 
 	const maxBackoff = 15 * time.Minute
 	failures := 0

@@ -72,6 +72,8 @@ can increase message volume needs care:
 | `cmd/ptal/commands.go` | The commands themselves. |
 | `cmd/ptal/config_cmd.go` | `ptal config`. |
 | `cmd/ptal/events_cmd.go` | `ptal events`. |
+| `cmd/ptal/service_cmd.go` | `start`, `stop`, `restart`, `pause`, `resume`. |
+| `internal/runner/commands.go` | The Telegram command listener. |
 | `internal/config` | Configuration loading, validation, credential discovery. `settings.go` is the single table that makes an option settable, listable and documented at once. |
 | `internal/githubapi` | GraphQL client, REST search client, and the fallback between them. |
 | `internal/engine` | Snapshot diffing, event rules, anti-spam guards, alert-type filtering. |

@@ -141,6 +141,12 @@ func cmdDoctor(ctx context.Context) error {
 		}
 	}
 
+	if st, err := store.Load(cfg.StatePath); err == nil {
+		if p := pauseState(st); p != "" {
+			fmt.Printf("• Alerts are %s\n", p)
+		}
+	}
+
 	info := service.Status()
 	switch {
 	case info.Running:
@@ -340,6 +346,11 @@ func cmdStatus() error {
 	st, err := store.Load(cfg.StatePath)
 	if err != nil {
 		return err
+	}
+	// A forgotten pause is the most likely reason for "it stopped working",
+	// so it belongs above everything else.
+	if p := pauseState(st); p != "" {
+		fmt.Printf("alerts:       %s\n", p)
 	}
 	if !st.FirstRunDone {
 		fmt.Println("sync:         never run")

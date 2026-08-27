@@ -76,6 +76,29 @@ func Uninstall() error {
 	return unsupported()
 }
 
+// Start launches the daemon without changing whether it runs at boot.
+func Start() error {
+	switch runtime.GOOS {
+	case "linux":
+		return run("systemctl", "--user", "start", Name+".service")
+	case "darwin":
+		return run("launchctl", "kickstart", fmt.Sprintf("gui/%d/%s", os.Getuid(), launchdLabel))
+	}
+	return unsupported()
+}
+
+// Stop halts the daemon but leaves it registered, so it comes back at the
+// next boot. Someone who wants it gone entirely runs `uninstall`.
+func Stop() error {
+	switch runtime.GOOS {
+	case "linux":
+		return run("systemctl", "--user", "stop", Name+".service")
+	case "darwin":
+		return run("launchctl", "kill", "SIGTERM", fmt.Sprintf("gui/%d/%s", os.Getuid(), launchdLabel))
+	}
+	return unsupported()
+}
+
 // Restart reloads the daemon so a configuration change takes effect.
 // Configuration is read once at startup, so changing a setting without this
 // would appear to do nothing until the next reboot.

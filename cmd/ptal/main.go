@@ -32,6 +32,12 @@ COMMANDS
   run         Keep running and alerting (what the service executes)
   install     Register to start with the system
   uninstall   Remove the registration
+
+  start       Start the daemon
+  stop        Stop the daemon (it returns at the next boot)
+  restart     Restart the daemon
+  pause       Stop alerting for a while (ptal pause 2h)
+  resume      Start alerting again
   status      Show the service and the last sync
   version     Print the version
 
@@ -92,6 +98,24 @@ func main() {
 	case "run":
 		if err = noArgs("run"); err == nil {
 			err = cmdRun(ctx)
+		}
+	case "start":
+		if err = noArgs("start"); err == nil {
+			err = cmdStart()
+		}
+	case "stop":
+		if err = noArgs("stop"); err == nil {
+			err = cmdStop()
+		}
+	case "restart":
+		if err = noArgs("restart"); err == nil {
+			err = cmdRestart()
+		}
+	case "pause":
+		err = cmdPause(rest)
+	case "resume":
+		if err = noArgs("resume"); err == nil {
+			err = cmdResume()
 		}
 	case "install":
 		if err = noArgs("install"); err == nil {
