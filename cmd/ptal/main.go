@@ -55,28 +55,56 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Commands that take no arguments must say so rather than silently
+	// ignoring them: `ptal install --help` used to install the service.
+	rest := os.Args[2:]
+	noArgs := func(name string) error {
+		if len(rest) > 0 {
+			return fmt.Errorf("%s takes no arguments, got %q\n\n%s", name, rest[0], usage)
+		}
+		return nil
+	}
+
 	var err error
 	switch os.Args[1] {
 	case "setup":
-		err = cmdSetup(ctx)
+		if err = noArgs("setup"); err == nil {
+			err = cmdSetup(ctx)
+		}
 	case "config":
 		err = cmdConfig(configArgs())
 	case "events":
-		err = cmdEvents()
+		if err = noArgs("events"); err == nil {
+			err = cmdEvents()
+		}
 	case "doctor":
-		err = cmdDoctor(ctx)
+		if err = noArgs("doctor"); err == nil {
+			err = cmdDoctor(ctx)
+		}
 	case "once":
-		err = cmdOnce(ctx)
+		if err = noArgs("once"); err == nil {
+			err = cmdOnce(ctx)
+		}
 	case "panel":
-		err = cmdPanel(ctx)
+		if err = noArgs("panel"); err == nil {
+			err = cmdPanel(ctx)
+		}
 	case "run":
-		err = cmdRun(ctx)
+		if err = noArgs("run"); err == nil {
+			err = cmdRun(ctx)
+		}
 	case "install":
-		err = cmdInstall()
+		if err = noArgs("install"); err == nil {
+			err = cmdInstall()
+		}
 	case "uninstall":
-		err = cmdUninstall()
+		if err = noArgs("uninstall"); err == nil {
+			err = cmdUninstall()
+		}
 	case "status":
-		err = cmdStatus()
+		if err = noArgs("status"); err == nil {
+			err = cmdStatus()
+		}
 	case "version", "--version", "-v":
 		fmt.Printf("ptal %s\n", version)
 	case "help", "--help", "-h":

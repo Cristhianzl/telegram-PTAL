@@ -7,6 +7,12 @@ on:
 permissions:
   contents: write
 
+# Two tag pushes in quick succession would otherwise race: the first run
+# uploads the assets and the second fails with "already_exists".
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
