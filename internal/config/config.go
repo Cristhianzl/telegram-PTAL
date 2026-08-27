@@ -59,6 +59,17 @@ type Config struct {
 	// TokenSource records where the credential came from, for `doctor`.
 	TokenSource string
 
+	// ReviewRepos are the repositories where the review button is offered.
+	// Empty disables reviewing entirely: running an agent over a branch is
+	// something to opt into per repository, not a default.
+	ReviewRepos []string
+	// ReviewRulesDir holds the .claude directory the review follows.
+	ReviewRulesDir string
+	// ReviewModel overrides the model used for reviews.
+	ReviewModel string
+	// ReviewTimeout bounds a single review.
+	ReviewTimeout time.Duration
+
 	// SourcePath is the .env file the configuration came from, so `setup`
 	// can write back into it.
 	SourcePath string
@@ -143,6 +154,13 @@ func Load() (*Config, error) {
 	}
 	c.WatchRepos = splitList(get("WATCH_REPOS"))
 	c.AlertOn = splitList(get("ALERT_ON"))
+	c.ReviewRepos = splitList(get("REVIEW_REPOS"))
+	c.ReviewRulesDir = get("REVIEW_RULES_DIR")
+	c.ReviewModel = get("REVIEW_MODEL")
+	c.ReviewTimeout = 15 * time.Minute
+	if d, err := time.ParseDuration(get("REVIEW_TIMEOUT")); err == nil && d > time.Minute {
+		c.ReviewTimeout = d
+	}
 	c.MuteEvents = splitList(get("MUTE_EVENTS"))
 
 	// With no token in the file, try the GitHub CLI: anyone already using
@@ -204,6 +222,25 @@ func DefaultConfigPath() string {
 		return filepath.Join(home, ".config", "ptal", ".env")
 	}
 	return ".env"
+}
+
+// ReviewEnabledFor reports whether reviewing is allowed in a repository.
+//
+// The check is an allowlist rather than a flag because the blast radius is
+// per repository: reviewing your own project is very different from running
+// an agent over a branch a stranger opened.
+func (c *Config) ReviewEnabledFor(repo string) bool {
+	for _, allowed := range c.ReviewRepos {
+		if strings.EqualFold(allowed, repo) {
+			return true
+		}
+		// A bare organization name enables every repository under it.
+		if !strings.Contains(allowed, "/") &&
+			strings.HasPrefix(strings.ToLower(repo), strings.ToLower(allowed)+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // Dir returns the directory holding the configuration, which is what the

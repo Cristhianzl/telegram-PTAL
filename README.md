@@ -218,6 +218,7 @@ ptal doctor      Diagnose token, chat, connectivity and service
 ptal once        Run a single cycle and print what it found
 ptal panel       Send a panel with the current state to Telegram
 ptal repo <name> List every open PR in a repository (add a user to filter)
+ptal review      Review a pull request with Claude Code
 
 ptal install     Register to start with the system
 ptal uninstall   Remove the registration
@@ -266,8 +267,49 @@ The bot answers commands in the chat, so you do not need the terminal:
 /clear         delete every message the bot has sent
 /pause 2h      stop alerting for a while
 /resume        start alerting again
+/review <repo> <n>  review a pull request with Claude
 /help          this list
 ```
+
+### Reviewing a pull request with Claude
+
+If you have the [Claude Code](https://claude.com/claude-code) CLI installed and
+logged in, review requests can arrive with a button:
+
+```
+👀 Review requested
+acme/api#412
+Add streaming to the chat endpoint
+
+[ 🤖 Review ]  [ Open PR ]  [ View diff ]
+```
+
+Tapping it checks the branch out, runs Claude Code against your own review
+rules, and posts the result on GitHub as a comment — approving the pull request
+or requesting changes. A few minutes later Telegram tells you what it decided.
+
+It uses your Claude subscription through the CLI, not an API key.
+
+**Claude gets read-only tools.** No `Write`, no `Edit`, no general `Bash`. It
+produces the review as text; PTAL is what writes to GitHub. That is what makes
+it safe to point at a repository where strangers open pull requests — their
+build scripts never execute on your machine.
+
+Reviewing is off until you name the repositories:
+
+```bash
+ptal config review-repos acme/api,my-org
+ptal config review-rules-dir ~/.config/ptal/reviewer-rules
+```
+
+Try it without publishing anything first:
+
+```bash
+ptal review acme/api 412 --dry-run
+```
+
+Full details, including how the rules are picked up and what it costs, in
+[docs/claude-review.md](docs/claude-review.md).
 
 ### Looking at a whole project
 

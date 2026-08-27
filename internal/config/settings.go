@@ -86,6 +86,26 @@ var settings = []Setting{
 		Validate: validateBool,
 	},
 	{
+		Key:      "REVIEW_REPOS",
+		Summary:  "Repositories where the Claude review button is offered.",
+		Validate: nil,
+	},
+	{
+		Key:      "REVIEW_RULES_DIR",
+		Summary:  "Directory holding the .claude/ rules the review follows.",
+		Validate: nil,
+	},
+	{
+		Key:      "REVIEW_MODEL",
+		Summary:  "Model override for reviews. Empty uses the CLI default.",
+		Validate: nil,
+	},
+	{
+		Key:      "REVIEW_TIMEOUT",
+		Summary:  "Cap on one review.",
+		Validate: validateDuration(time.Minute),
+	},
+	{
 		Key:      "GITHUB_LOGIN",
 		Summary:  "Your GitHub username. Discovered from the token when empty.",
 		Validate: nil,
@@ -164,6 +184,23 @@ func (c *Config) Effective(key string) string {
 		return strconv.FormatBool(strings.Contains(c.TokenSource, "CLI"))
 	case "PUBLIC_ONLY":
 		return strconv.FormatBool(c.PublicOnly)
+	case "REVIEW_REPOS":
+		if len(c.ReviewRepos) == 0 {
+			return "(reviewing disabled)"
+		}
+		return strings.Join(c.ReviewRepos, ",")
+	case "REVIEW_RULES_DIR":
+		if c.ReviewRulesDir == "" {
+			return "(default: reviewer-rules/)"
+		}
+		return c.ReviewRulesDir
+	case "REVIEW_MODEL":
+		if c.ReviewModel == "" {
+			return "(CLI default)"
+		}
+		return c.ReviewModel
+	case "REVIEW_TIMEOUT":
+		return c.ReviewTimeout.String()
 	case "GITHUB_LOGIN":
 		if c.Login == "" {
 			return "(from token)"

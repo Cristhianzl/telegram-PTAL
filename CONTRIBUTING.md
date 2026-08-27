@@ -77,6 +77,8 @@ can increase message volume needs care:
 | `cmd/ptal/events_cmd.go` | `ptal events`. |
 | `cmd/ptal/service_cmd.go` | `start`, `stop`, `restart`, `pause`, `resume`. |
 | `internal/runner/commands.go` | The Telegram command listener. |
+| `internal/runner/review.go` | The review button and its callback. |
+| `internal/reviewer` | Checkout, Claude invocation, verdict parsing, publishing. |
 | `internal/config` | Configuration loading, validation, credential discovery. `settings.go` is the single table that makes an option settable, listable and documented at once. |
 | `internal/githubapi` | GraphQL client, REST search client, and the fallback between them. |
 | `internal/engine` | Snapshot diffing, event rules, anti-spam guards, alert-type filtering. |
@@ -87,6 +89,21 @@ can increase message volume needs care:
 
 Keep files under 500 lines and one responsibility each. If a file starts
 needing "and" to describe it, split it.
+
+## Changes to the reviewer
+
+`internal/reviewer` runs an agent over branches other people wrote. Two rules
+are load-bearing and a test enforces each:
+
+- **The tool list stays read-only.** No `Write`, no `Edit`, no unrestricted
+  `Bash`. Widening it means a pull request from a stranger can execute on the
+  reviewer's machine.
+- **Claude never mutates GitHub.** Posting the comment and setting the verdict
+  happens in `publish.go`, in code. An agent deciding for itself what to run
+  against the API is not auditable.
+
+A missing verdict must keep defaulting to `comment`. Approving or blocking on
+a parsing slip is worse than saying nothing.
 
 ## Security
 

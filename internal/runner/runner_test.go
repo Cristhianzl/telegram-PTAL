@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/Cristhianzl/telegram-PTAL/internal/config"
+	"github.com/Cristhianzl/telegram-PTAL/internal/githubapi"
 	"github.com/Cristhianzl/telegram-PTAL/internal/store"
 )
 
@@ -230,5 +231,84 @@ func TestNewCommentGeneratesActivityAlert(t *testing.T) {
 	}
 	if !strings.Contains(msgs[0], "5 new comments") {
 		t.Errorf("expected the comment count:\n%s", msgs[0])
+	}
+}
+
+// The review button must only appear where reviewing is enabled: tapping it
+// runs an agent over that branch.
+func TestReviewButtonOnlyOnAllowedRepos(t *testing.T) {
+	cfg := &config.Config{ReviewRepos: []string{"acme/api", "trusted-org"}}
+	r := &Runner{cfg: cfg}
+
+	cases := []struct {
+		repo string
+		want bool
+	}{
+		{"acme/api", true},          // exact
+		{"trusted-org/anything", true}, // whole organization
+		{"stranger/repo", false},
+		{"acme/other", false},
+	}
+	for _, c := range cases {
+		_, got := r.reviewButton(&githubapi.PullRequest{Repo: c.repo, Number: 1})
+		if got != c.want {
+			t.Errorf("%s: button offered = %v, want %v", c.repo, got, c.want)
+		}
+	}
+}
+
+// Telegram caps callback_data at 64 bytes. A truncated payload would resolve
+// to the wrong pull request, so the button is dropped instead.
+func TestReviewButtonDroppedWhenDataWouldOverflow(t *testing.T) {
+	long := "some-very-long-organization-name/an-equally-long-repository-name-here"
+	cfg := &config.Config{ReviewRepos: []string{long}}
+	r := &Runner{cfg: cfg}
+
+	if _, ok := r.reviewButton(&githubapi.PullRequest{Repo: long, Number: 123456}); ok {
+		t.Error("a button whose data exceeds 64 bytes must not be offered")
+	}
+}
+
+func TestReviewCallbackRoundTrips(t *testing.T) {
+	cfg := &config.Config{ReviewRepos: []string{"acme/api"}}
+	r := &Runner{cfg: cfg}
+
+	btn, ok := r.reviewButton(&githubapi.PullRequest{Repo: "acme/api", Number: 412})
+	if !ok {
+		t.Fatal("the button should be offered")
+	}
+	if len(btn.Data) > maxCallbackData {
+		t.Errorf("callback data is %d bytes, over the limit", len(btn.Data))
+	}
+
+	repo, number, ok := parseReviewCallback(btn.Data)
+	if !ok || repo != "acme/api" || number != 412 {
+		t.Errorf("round trip gave (%q, %d, %v)", repo, number, ok)
+	}
+}
+
+func TestMalformedCallbackIsRejected(t *testing.T) {
+	for _, data := range []string{"", "rv:", "rv:acme/api", "rv:acme/api:zero", "other:acme/api:1"} {
+		if _, _, ok := parseReviewCallback(data); ok {
+			t.Errorf("%q should not parse as a review callback", data)
+		}
+	}
+}
+
+// One review at a time: each drives a Claude session for minutes, and a burst
+// of taps must not start several against the same subscription.
+func TestOnlyOneReviewRunsAtATime(t *testing.T) {
+	l := newReviewLimiter()
+
+	if !l.acquire("acme/api#1") {
+		t.Fatal("the first review should start")
+	}
+	if l.acquire("acme/api#2") {
+		t.Error("a second, different review must wait")
+	}
+
+	l.release("acme/api#1")
+	if !l.acquire("acme/api#2") {
+		t.Error("releasing should let the next one through")
 	}
 }

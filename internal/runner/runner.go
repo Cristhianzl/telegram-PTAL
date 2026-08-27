@@ -31,6 +31,8 @@ type Runner struct {
 
 	// botUsername strips the @mention Telegram appends to commands in groups.
 	botUsername string
+	// reviews keeps concurrent reviews to one at a time.
+	reviews *reviewLimiter
 }
 
 // New assembles a fully configured runner.
@@ -49,7 +51,8 @@ func New(cfg *config.Config, state *store.State, logger *log.Logger) *Runner {
 		tg:     telegram.New(cfg.TelegramToken),
 		state:  state,
 		log:    logger,
-		quiet:  engine.ParseQuietHours(cfg.QuietHours),
+		quiet:   engine.ParseQuietHours(cfg.QuietHours),
+		reviews: newReviewLimiter(),
 	}
 
 	// Names are validated when they are written, so a parse failure here can
@@ -165,13 +168,18 @@ func (r *Runner) deliver(ctx context.Context, batch engine.Batch) int {
 	}
 
 	opts := telegram.SendOptions{Silent: batch.Silent}
-	// A single event gets direct buttons to the pull request.
+	// A single event gets direct buttons to the pull request, plus the
+	// review button where reviewing is enabled.
 	if len(batch.Events) == 1 && batch.Events[0].PR != nil {
 		pr := batch.Events[0].PR
-		opts.Buttons = [][]telegram.Button{{
+		row := []telegram.Button{
 			{Text: "Open PR", URL: pr.URL},
 			{Text: "View diff", URL: pr.URL + "/files"},
-		}}
+		}
+		if btn, ok := r.reviewButton(pr); ok && batch.Events[0].Kind == engine.KindReviewRequested {
+			row = append([]telegram.Button{btn}, row...)
+		}
+		opts.Buttons = [][]telegram.Button{row}
 	}
 
 	msg, err := r.tg.Send(ctx, r.cfg.TelegramChat, text, opts)

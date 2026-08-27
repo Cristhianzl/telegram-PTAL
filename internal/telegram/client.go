@@ -79,6 +79,24 @@ type Update struct {
 			Username string `json:"username"`
 		} `json:"from"`
 	} `json:"message"`
+	// CallbackQuery arrives when someone taps an inline button carrying
+	// data rather than a URL. This is what lets a button trigger work on
+	// the machine instead of only opening a link.
+	CallbackQuery *CallbackQuery `json:"callback_query"`
+}
+
+// CallbackQuery is a tap on an inline button.
+type CallbackQuery struct {
+	ID      string `json:"id"`
+	Data    string `json:"data"`
+	Message *struct {
+		MessageID int  `json:"message_id"`
+		Chat      Chat `json:"chat"`
+	} `json:"message"`
+	From struct {
+		ID       int64  `json:"id"`
+		Username string `json:"username"`
+	} `json:"from"`
 }
 
 // Message is the message returned by sendMessage.
@@ -115,8 +133,8 @@ func (c *Client) GetMe(ctx context.Context) (*Bot, error) {
 // connection until something arrives, which makes long polling cheap.
 func (c *Client) GetUpdates(ctx context.Context, offset int64, timeoutSec int) ([]Update, error) {
 	payload := map[string]any{
-		"timeout":          timeoutSec,
-		"allowed_updates":  []string{"message"},
+		"timeout":         timeoutSec,
+		"allowed_updates": []string{"message", "callback_query"},
 	}
 	if offset != 0 {
 		payload["offset"] = offset
@@ -136,10 +154,25 @@ type SendOptions struct {
 	Buttons [][]Button
 }
 
-// Button is an inline button that opens a URL.
+// Button is an inline button. Exactly one of URL or Data is set: a URL
+// button opens a link, a data button sends a callback the daemon acts on.
 type Button struct {
 	Text string `json:"text"`
-	URL  string `json:"url"`
+	URL  string `json:"url,omitempty"`
+	Data string `json:"callback_data,omitempty"`
+}
+
+// AnswerCallback acknowledges a button tap.
+//
+// Telegram shows a loading spinner on the button until this is called, so
+// answering promptly - before the real work starts - is what keeps the
+// button from looking stuck.
+func (c *Client) AnswerCallback(ctx context.Context, callbackID, text string) error {
+	payload := map[string]any{"callback_query_id": callbackID}
+	if text != "" {
+		payload["text"] = text
+	}
+	return c.call(ctx, "answerCallbackQuery", payload, nil)
 }
 
 // Send posts an HTML message with the link preview card disabled, which would

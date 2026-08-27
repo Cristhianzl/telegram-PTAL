@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Review a pull request with Claude Code: a button on the alert checks the
+  branch out, runs the CLI headlessly against your own `.claude/` rules, and
+  posts the review to GitHub with the pull request approved or changes
+  requested. Uses the CLI's existing subscription, not an API key.
+  Also available as `ptal review <repo> <number>` and `/review` in Telegram.
+- Reviewing is off until repositories are named in `REVIEW_REPOS`.
+
 - `ptal start`, `stop`, `restart`, `pause` and `resume`. Stopping the daemon
   previously meant reaching for `systemctl` or `launchctl` directly.
 - Pausing suppresses delivery without stopping the cycle, so resuming does not

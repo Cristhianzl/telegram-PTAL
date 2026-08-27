@@ -30,6 +30,7 @@ COMMANDS
   once        Run a single cycle and print the result
   panel       Send a panel with the current state to Telegram
   repo        List every open PR in a repository (ptal repo owner/name)
+  review      Review a pull request with Claude Code
   run         Keep running and alerting (what the service executes)
   install     Register to start with the system
   uninstall   Remove the registration
@@ -98,6 +99,8 @@ func main() {
 		}
 	case "repo":
 		err = cmdRepo(rest)
+	case "review":
+		err = cmdReview(rest)
 	case "run":
 		if err = noArgs("run"); err == nil {
 			err = cmdRun(ctx)

@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ const telegramHelp = `<b>PTAL commands</b>
 /clear - delete every message I have sent
 /pause 2h - stop alerting for a while
 /resume - start alerting again
+/review &lt;repo&gt; &lt;number&gt; - review a PR with Claude
 /help - this
 
 <i>Settings live on the machine running me: `+"`ptal config`"+`</i>`
@@ -56,6 +58,15 @@ func (r *Runner) ListenCommands(ctx context.Context) {
 
 		for _, u := range updates {
 			r.state.LastUpdateID = u.UpdateID
+
+			if q := u.CallbackQuery; q != nil {
+				if q.Message == nil || fmt.Sprint(q.Message.Chat.ID) != r.cfg.TelegramChat {
+					continue
+				}
+				r.handleReviewCallback(ctx, q)
+				continue
+			}
+
 			if u.Message == nil {
 				continue
 			}
@@ -102,9 +113,47 @@ func (r *Runner) handleCommand(ctx context.Context, text string) {
 		r.pauseFromTelegram(ctx, args)
 	case "/resume":
 		r.resumeFromTelegram(ctx)
+	case "/review":
+		r.reviewFromTelegram(ctx, args)
 	default:
 		r.reply(ctx, "Unknown command. Try /help")
 	}
+}
+
+// reviewFromTelegram starts a review named by hand, for pull requests that
+// did not arrive with a button.
+func (r *Runner) reviewFromTelegram(ctx context.Context, args string) {
+	fields := strings.Fields(args)
+	if len(fields) < 2 {
+		r.reply(ctx, "Usage: <code>/review &lt;repo&gt; &lt;number&gt;</code>")
+		return
+	}
+	repo, err := githubapi.ResolveRepo(fields[0], r.cfg.WatchRepos)
+	if err != nil {
+		r.reply(ctx, telegram.EscapeHTML(err.Error()))
+		return
+	}
+	number, err := strconv.Atoi(fields[1])
+	if err != nil {
+		r.reply(ctx, "That is not a pull request number.")
+		return
+	}
+	if !r.cfg.ReviewEnabledFor(repo) {
+		r.reply(ctx, "Reviewing is not enabled for "+telegram.EscapeHTML(repo)+
+			".\n\n<i>Enable it with</i> <code>ptal config review-repos "+
+			telegram.EscapeHTML(repo)+"</code>")
+		return
+	}
+
+	key := key(repo, number)
+	if !r.reviews.acquire(key) {
+		r.reply(ctx, "A review is already running.")
+		return
+	}
+	go func() {
+		defer r.reviews.release(key)
+		r.runReview(context.Background(), repo, number)
+	}()
 }
 
 // clearHistory deletes everything the bot has posted.
