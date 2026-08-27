@@ -21,7 +21,7 @@ that ends up inside a Telegram message.
 
 | Control | What it stops | What it does not stop |
 |---|---|---|
-| `.env` written with mode `0600` | Other users on the machine reading your tokens. | Anyone who can already read your home directory as you, or root. |
+| `.env` written with mode `0600` | Other users on the machine reading your tokens. | Anyone who can already read your home directory as you, or root. **On Windows this control does not apply** - the platform has no Unix permission bits, and the file inherits the directory's ACL. |
 | State file written with mode `0600` | The same, for cached pull request data. | The same. |
 | Tokens never logged, never printed | Credentials leaking into journald, log files, or a pasted `doctor` output. | A token you paste somewhere yourself. |
 | HTML escaping on every GitHub-sourced string | A crafted pull request title breaking the message markup or injecting a link. | Nothing else; it is an integrity control for the message. |
