@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-27
+
 ### Added
 
 - Review a pull request with Claude Code: a button on the alert checks the
@@ -18,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `ptal review ... -m "..."` and `/review <repo> <n> <instructions>` steer a
   single review; `REVIEW_INSTRUCTIONS` steers every one. Instructions sit
   before the output rules so they cannot break the verdict contract.
-
 - `ptal start`, `stop`, `restart`, `pause` and `resume`. Stopping the daemon
   previously meant reaching for `systemctl` or `launchctl` directly.
 - Pausing suppresses delivery without stopping the cycle, so resuming does not
@@ -83,5 +84,6 @@ First release.
   technically open and would otherwise drown out the rest.
 - The first run is silent, recording what already exists without announcing it.
 
-[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Cristhianzl/telegram-PTAL/releases/tag/v0.1.0
