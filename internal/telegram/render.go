@@ -92,10 +92,7 @@ func renderSingle(e engine.Event) string {
 
 // prLine is the compact form of a pull request inside a list.
 func prLine(pr *githubapi.PullRequest) string {
-	title := pr.Title
-	if len(title) > 58 {
-		title = strings.TrimSpace(title[:57]) + "…"
-	}
+	title := truncateTitle(pr.Title, 58)
 	line := fmt.Sprintf("<a href=%q>%s</a> %s", pr.URL, esc(pr.Slug()), esc(title))
 	if s := pr.ChecksSymbol(); s != "" && (s == "❌ CI") {
 		line += " " + s
@@ -138,6 +135,62 @@ func RenderPanel(snap *githubapi.Snapshot) string {
 
 	fmt.Fprintf(&b, "\n<i>updated %s</i>", esc(snap.FetchedAt.Local().Format("15:04")))
 	return b.String()
+}
+
+// RenderRepoList renders every open pull request in one repository.
+//
+// Unlike the panel, this is not about you: it shows authors, because the
+// point of asking about a whole project is seeing who is waiting on what.
+func RenderRepoList(repo string, prs []*githubapi.PullRequest, limit int) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "📂 <b>%s</b>\n", esc(repo))
+
+	if len(prs) == 0 {
+		b.WriteString("\n<i>No open pull requests.</i>")
+		return b.String()
+	}
+	fmt.Fprintf(&b, "<i>%d open</i>\n\n", len(prs))
+
+	shown := prs
+	if limit > 0 && len(shown) > limit {
+		shown = shown[:limit]
+	}
+
+	for _, pr := range shown {
+		fmt.Fprintf(&b, "<a href=%q>#%d</a> %s\n", pr.URL, pr.Number, esc(truncateTitle(pr.Title, 54)))
+
+		var meta []string
+		if pr.Author != "" {
+			meta = append(meta, "@"+esc(pr.Author))
+		}
+		if pr.IsDraft {
+			meta = append(meta, "draft")
+		}
+		if s := pr.ChecksSymbol(); s != "" {
+			meta = append(meta, s)
+		}
+		if pr.ReviewDecision == "APPROVED" {
+			meta = append(meta, "✅ approved")
+		}
+		if !pr.UpdatedAt.IsZero() {
+			meta = append(meta, humanAge(pr.UpdatedAt))
+		}
+		if len(meta) > 0 {
+			fmt.Fprintf(&b, "  <i>%s</i>\n", strings.Join(meta, " · "))
+		}
+	}
+
+	if len(prs) > len(shown) {
+		fmt.Fprintf(&b, "\n<i>+%d more</i>", len(prs)-len(shown))
+	}
+	return b.String()
+}
+
+func truncateTitle(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return strings.TrimSpace(s[:n-1]) + "…"
 }
 
 // RenderSummary is the short text of the /status command.

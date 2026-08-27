@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Only the configured chat is obeyed.
 - `/clear` deletes the messages the bot has sent, and reports how many were
   actually removed — Telegram refuses anything older than 48 hours.
+- `/prs <repo>` and `ptal repo <name>` list every open pull request in a
+  repository, whoever they belong to. A bare name is matched against
+  `WATCH_REPOS`, so the owner does not have to be remembered. On demand only:
+  it never feeds the alerting loop.
 
 ### Fixed
 

@@ -217,6 +217,7 @@ ptal events      List alert types and which are on
 ptal doctor      Diagnose token, chat, connectivity and service
 ptal once        Run a single cycle and print what it found
 ptal panel       Send a panel with the current state to Telegram
+ptal repo <name> List every open PR in a repository
 
 ptal install     Register to start with the system
 ptal uninstall   Remove the registration
@@ -259,13 +260,39 @@ $ ptal pause 2h
 The bot answers commands in the chat, so you do not need the terminal:
 
 ```
-/prs        your pull requests right now
-/status     last sync, mode, what is tracked
-/clear      delete every message the bot has sent
-/pause 2h   stop alerting for a while
-/resume     start alerting again
-/help       this list
+/prs           your pull requests right now
+/prs <repo>    every open PR in a repository
+/status        last sync, mode, what is tracked
+/clear         delete every message the bot has sent
+/pause 2h      stop alerting for a while
+/resume        start alerting again
+/help          this list
 ```
+
+### Looking at a whole project
+
+Everything else in PTAL is about you. `/prs <repo>` is the exception: it lists
+every open pull request in a repository, whoever they belong to.
+
+```
+/prs acme/api        full path
+/prs api             short name, matched against WATCH_REPOS
+```
+
+```
+📂 acme/api
+12 open
+
+#412 Add streaming to the chat endpoint
+  @alice · ❌ CI · 2h ago
+#408 Bump the parser dependency
+  @bob · ✅ CI · ✅ approved · yesterday
+```
+
+The same thing from the terminal is `ptal repo api`.
+
+This is on demand only — it never feeds the alerting loop, which would
+otherwise start reporting other people's work.
 
 `/clear` cleans up the chat. Telegram only lets a bot delete its own messages
 for 48 hours, so anything older stays — the reply tells you how many actually

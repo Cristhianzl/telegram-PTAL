@@ -14,6 +14,7 @@ import (
 const telegramHelp = `<b>PTAL commands</b>
 
 /prs - your pull requests right now
+/prs &lt;repo&gt; - every open PR in a repository
 /status - last sync, mode, rate limit
 /clear - delete every message I have sent
 /pause 2h - stop alerting for a while
@@ -85,7 +86,13 @@ func (r *Runner) handleCommand(ctx context.Context, text string) {
 	case "/start", "/help":
 		r.reply(ctx, telegramHelp)
 	case "/prs":
-		r.replyWithPanel(ctx)
+		if args != "" {
+			r.replyWithRepo(ctx, args)
+		} else {
+			r.replyWithPanel(ctx)
+		}
+	case "/repo":
+		r.replyWithRepo(ctx, args)
 	case "/status":
 		r.replyWithStatus(ctx)
 	case "/clear":
@@ -134,6 +141,31 @@ func (r *Runner) replyWithPanel(ctx context.Context) {
 		return
 	}
 	r.reply(ctx, telegram.RenderPanel(snap))
+}
+
+// replyWithRepo answers with every open pull request in a repository, which
+// is a different question from "what needs me" and deliberately ignores the
+// user filters.
+func (r *Runner) replyWithRepo(ctx context.Context, input string) {
+	if input == "" {
+		r.reply(ctx, "Which repository? Try <code>/prs owner/name</code>, or a "+
+			"short name from the ones you watch.")
+		return
+	}
+
+	repo, err := githubapi.ResolveRepo(input, r.cfg.WatchRepos)
+	if err != nil {
+		r.reply(ctx, telegram.EscapeHTML(err.Error()))
+		return
+	}
+
+	prs, err := r.source.RepoPullRequests(ctx, repo, 50)
+	if err != nil {
+		r.reply(ctx, "Could not read "+telegram.EscapeHTML(repo)+": "+
+			telegram.EscapeHTML(err.Error()))
+		return
+	}
+	r.reply(ctx, telegram.RenderRepoList(repo, prs, 25))
 }
 
 func (r *Runner) replyWithStatus(ctx context.Context) {

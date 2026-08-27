@@ -371,6 +371,31 @@ func apiMessage(body []byte) string {
 	return strings.TrimSpace(string(body))
 }
 
+// unmarshalGraphQL decodes the envelope shared by every GraphQL call.
+func unmarshalGraphQL(body []byte, out *graphQLResponse) error {
+	if err := json.Unmarshal(body, out); err != nil {
+		return fmt.Errorf("unreadable response from GitHub: %w", err)
+	}
+	return nil
+}
+
+// unmarshalRaw decodes one field of a GraphQL response.
+func unmarshalRaw(raw json.RawMessage, out any) error {
+	if len(raw) == 0 {
+		return fmt.Errorf("the response did not contain the expected field")
+	}
+	return json.Unmarshal(raw, out)
+}
+
+// asPolicy reports whether the error is an organization policy rejection.
+func asPolicy(err error, target **PolicyError) bool {
+	if e, ok := err.(*PolicyError); ok {
+		*target = e
+		return true
+	}
+	return false
+}
+
 // graphQLError converts the errors the API returns inside a 200 response.
 func graphQLError(resp graphQLResponse) error {
 	if len(resp.Errors) == 0 {

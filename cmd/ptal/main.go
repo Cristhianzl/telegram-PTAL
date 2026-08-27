@@ -29,6 +29,7 @@ COMMANDS
   doctor      Diagnose token, chat, connectivity and service
   once        Run a single cycle and print the result
   panel       Send a panel with the current state to Telegram
+  repo        List every open PR in a repository (ptal repo owner/name)
   run         Keep running and alerting (what the service executes)
   install     Register to start with the system
   uninstall   Remove the registration
@@ -95,6 +96,8 @@ func main() {
 		if err = noArgs("panel"); err == nil {
 			err = cmdPanel(ctx)
 		}
+	case "repo":
+		err = cmdRepo(rest)
 	case "run":
 		if err = noArgs("run"); err == nil {
 			err = cmdRun(ctx)

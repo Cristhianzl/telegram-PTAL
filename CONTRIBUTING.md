@@ -57,6 +57,9 @@ can increase message volume needs care:
 
 ## Changes that touch the GitHub API
 
+- `internal/githubapi/repo.go` is the one place that queries without a user
+  filter, and it must stay on-demand only. Wiring it into the alerting loop
+  would turn a personal tool into a repository firehose.
 - Search qualifiers are load-bearing. `review-requested:` versus
   `user-review-requested:` was a 61-to-1 difference on a real account.
 - Rate limits differ per path: 5,000 points/hour for GraphQL, 30 requests/minute

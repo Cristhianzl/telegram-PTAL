@@ -218,3 +218,85 @@ func TestBucketQueryHonorsTeamFlag(t *testing.T) {
 		t.Error("only the review bucket depends on the team flag")
 	}
 }
+
+// People refer to a project by its short name, not its full path. Matching
+// against the watched repositories is what makes `/prs myproject` work
+// without anyone having to remember the owner.
+func TestResolveRepoAcceptsShortNames(t *testing.T) {
+	watched := []string{"octocat/hello-world", "acme/api", "acme"}
+
+	cases := []struct{ input, want string }{
+		{"octocat/hello-world", "octocat/hello-world"}, // already complete
+		{"hello-world", "octocat/hello-world"},         // bare name
+		{"HELLO-WORLD", "octocat/hello-world"},         // case-insensitive
+		{"api", "acme/api"},
+		{"other/repo", "other/repo"}, // unwatched but explicit
+	}
+	for _, c := range cases {
+		got, err := ResolveRepo(c.input, watched)
+		if err != nil {
+			t.Errorf("ResolveRepo(%q) errored: %v", c.input, err)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("ResolveRepo(%q) = %q, want %q", c.input, got, c.want)
+		}
+	}
+}
+
+// An ambiguous short name must ask rather than guess: picking one silently
+// would show the wrong project's pull requests.
+func TestResolveRepoRefusesToGuess(t *testing.T) {
+	watched := []string{"acme/api-gateway", "acme/api-worker"}
+
+	_, err := ResolveRepo("api", watched)
+
+	if err == nil {
+		t.Fatal("an ambiguous name should be refused, not guessed")
+	}
+	for _, want := range []string{"api-gateway", "api-worker"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the error should list the candidates, got: %v", err)
+		}
+	}
+}
+
+func TestResolveRepoRejectsUnknownNames(t *testing.T) {
+	if _, err := ResolveRepo("nothing", []string{"acme/api"}); err == nil {
+		t.Error("an unmatched bare name should be an error")
+	}
+	if _, err := ResolveRepo("", nil); err == nil {
+		t.Error("an empty name should be an error")
+	}
+}
+
+// The repository query deliberately carries no user filter: asking about a
+// project means asking about everyone's work on it.
+func TestRepoQueryHasNoUserFilter(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("q")
+		for _, forbidden := range []string{"@me", "author:", "review-requested:", "mentions:"} {
+			if strings.Contains(q, forbidden) {
+				t.Errorf("the repository query must not filter by user, found %q in %q", forbidden, q)
+			}
+		}
+		if !strings.Contains(q, "repo:acme/api") {
+			t.Errorf("the query should scope to the repository: %q", q)
+		}
+		fmt.Fprint(w, `{"total_count":0,"items":[]}`)
+	}))
+	defer srv.Close()
+
+	c := NewPublic("alice")
+	c.SetEndpoint(srv.URL)
+
+	if _, err := c.RepoPullRequests(context.Background(), "acme/api", 10); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRepoPullRequestsRejectsBareName(t *testing.T) {
+	if _, err := NewPublic("alice").RepoPullRequests(context.Background(), "api", 10); err == nil {
+		t.Error("a name without an owner should be rejected before any request")
+	}
+}

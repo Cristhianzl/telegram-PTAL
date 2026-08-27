@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -283,6 +284,57 @@ func cmdOnce(ctx context.Context) error {
 			fmt.Printf("   %-30s %s %s\n", pr.Slug(), truncate(pr.Title, 50), flags)
 		}
 		fmt.Println()
+	}
+	return nil
+}
+
+// cmdRepo lists every open pull request in a repository.
+//
+// This asks a different question from the rest of the tool: not "what needs
+// me" but "what is happening on this project". It is on demand only and never
+// feeds the alerting loop.
+func cmdRepo(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("which repository?\n" +
+			"  ptal repo owner/name\n" +
+			"  ptal repo <short-name>   (matched against WATCH_REPOS)")
+	}
+
+	cfg, state, err := prepareAllowNoChat()
+	if err != nil {
+		return err
+	}
+	repo, err := githubapi.ResolveRepo(args[0], cfg.WatchRepos)
+	if err != nil {
+		return err
+	}
+
+	r := runner.New(cfg, state, log.New(io.Discard, "", 0))
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if err := r.Source().Resolve(ctx); err != nil {
+		return err
+	}
+	prs, err := r.Source().RepoPullRequests(ctx, repo, 100)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s · %d open\n\n", repo, len(prs))
+	if len(prs) == 0 {
+		return nil
+	}
+	for _, pr := range prs {
+		flags := pr.ChecksSymbol()
+		if pr.IsDraft {
+			flags += " draft"
+		}
+		if pr.ReviewDecision == "APPROVED" {
+			flags += " approved"
+		}
+		fmt.Printf("  #%-6d %-52s %-14s %s\n",
+			pr.Number, truncate(pr.Title, 50), "@"+pr.Author, flags)
 	}
 	return nil
 }
