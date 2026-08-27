@@ -87,6 +87,8 @@ type GateOptions struct {
 	Quiet      QuietHours
 	MaxPerHour int
 	Now        time.Time
+	// Kinds decides which event types are delivered at all.
+	Kinds KindFilter
 }
 
 // Gate applies, in order: fingerprint deduplication, the hourly message
@@ -108,6 +110,12 @@ func Gate(events []Event, state Seen, opts GateOptions) (urgent, batched Batch) 
 	}
 
 	for _, e := range events {
+		// Filtering before deduplication matters: marking a muted event as
+		// seen would suppress it permanently if the user later unmutes it.
+		if !opts.Kinds.Allows(e.Kind) {
+			continue
+		}
+
 		fp := e.Fingerprint()
 		if state.Seen(fp) {
 			continue

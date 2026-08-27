@@ -1,0 +1,10 @@
+.git
+.github
+.claude
+dist
+*.md
+!README.md
+.env
+state.json
+ptal
+ptal.exe

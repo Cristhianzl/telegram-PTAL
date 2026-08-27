@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
+	"strings"
 	"time"
 
 	"github.com/Cristhianzl/telegram-PTAL/internal/config"
@@ -26,6 +27,7 @@ type Runner struct {
 	log    *log.Logger
 
 	quiet engine.QuietHours
+	kinds engine.KindFilter
 }
 
 // New assembles a fully configured runner.
@@ -46,6 +48,13 @@ func New(cfg *config.Config, state *store.State, logger *log.Logger) *Runner {
 		log:    logger,
 		quiet:  engine.ParseQuietHours(cfg.QuietHours),
 	}
+
+	// Names are validated when they are written, so a parse failure here can
+	// only come from a hand-edited file. Ignoring the bad entries beats
+	// refusing to start and leaving the user with no alerts at all.
+	allow, _ := engine.ParseKinds(strings.Join(cfg.AlertOn, ","))
+	mute, _ := engine.ParseKinds(strings.Join(cfg.MuteEvents, ","))
+	r.kinds = engine.NewKindFilter(allow, mute)
 
 	// Announcing a downgrade on Telegram matters: the user needs to know
 	// they stopped receiving CI state and approvals.
@@ -98,6 +107,7 @@ func (r *Runner) Once(ctx context.Context) (*githubapi.Snapshot, int, error) {
 		Quiet:      r.quiet,
 		MaxPerHour: r.cfg.MaxPerHour,
 		Now:        time.Now(),
+		Kinds:      r.kinds,
 	})
 
 	sent := 0

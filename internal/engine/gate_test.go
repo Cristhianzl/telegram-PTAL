@@ -121,3 +121,41 @@ func TestQuietHoursMarksBatchSilent(t *testing.T) {
 		t.Error("urgent events must still be delivered, just silently")
 	}
 }
+
+// Muting has to happen before deduplication. Marking a muted event as seen
+// would suppress it permanently, so unmuting later would deliver nothing.
+func TestMutedEventsAreNotMarkedAsSeen(t *testing.T) {
+	state := newFakeState()
+	events := []Event{event(KindChecksFailed, UrgencyNow, "a")}
+
+	urgent, _ := Gate(events, state, GateOptions{
+		MaxPerHour: 100,
+		Kinds:      NewKindFilter(nil, []Kind{KindChecksFailed}),
+	})
+	if len(urgent.Events) != 0 {
+		t.Fatal("a muted event must not be delivered")
+	}
+
+	// Same event, now unmuted: it must arrive.
+	urgent, _ = Gate(events, state, GateOptions{MaxPerHour: 100})
+	if len(urgent.Events) != 1 {
+		t.Error("unmuting must deliver the event, not stay silent forever")
+	}
+}
+
+func TestFilterDoesNotAffectOtherKinds(t *testing.T) {
+	state := newFakeState()
+	events := []Event{
+		event(KindChecksFailed, UrgencyNow, "a"),
+		event(KindReviewRequested, UrgencyNow, "b"),
+	}
+
+	urgent, _ := Gate(events, state, GateOptions{
+		MaxPerHour: 100,
+		Kinds:      NewKindFilter(nil, []Kind{KindChecksFailed}),
+	})
+
+	if len(urgent.Events) != 1 || urgent.Events[0].Kind != KindReviewRequested {
+		t.Errorf("only the muted kind should be dropped, got %v", urgent.Events)
+	}
+}

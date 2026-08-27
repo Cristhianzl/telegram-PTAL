@@ -1,5 +1,11 @@
 # PTAL
 
+[![CI](https://github.com/Cristhianzl/telegram-PTAL/actions/workflows/ci.yml/badge.svg)](https://github.com/Cristhianzl/telegram-PTAL/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/Cristhianzl/telegram-PTAL.svg)](https://pkg.go.dev/github.com/Cristhianzl/telegram-PTAL)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Cristhianzl/telegram-PTAL)](https://goreportcard.com/report/github.com/Cristhianzl/telegram-PTAL)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Cristhianzl/telegram-PTAL?sort=semver)](https://github.com/Cristhianzl/telegram-PTAL/releases)
+
 **P**lease **T**ake **A** **L**ook — the four letters developers leave on a pull
 request when they need your eyes on it.
 
@@ -99,6 +105,8 @@ make install   # registers the service to start with your computer
 | `WATCH_REPOS` | no | Limit to `owner/repo` or a bare org name, comma-separated. Empty watches everything. |
 | `MAX_AGE_DAYS` | no | Ignore pull requests idle for more than N days. Default `14`, `0` disables. |
 | `INCLUDE_TEAM_REVIEWS` | no | Include reviews requested from your team. Default `false`. |
+| `MUTE_EVENTS` | no | Alert types never to send. See `ptal events`. |
+| `ALERT_ON` | no | Send only these alert types. Empty means all. |
 | `IGNORE_DRAFTS` | no | Default `true`. |
 | `IGNORE_AUTHORS` | no | Comma-separated logins to skip. Defaults to common bots. |
 | `POLL_INTERVAL` | no | Default `2m`. Minimum `30s`. |
@@ -170,11 +178,20 @@ dominates: on one real account the broad qualifier returned 61 open pull
 requests, of which exactly **1** was a request addressed to that person by name.
 PTAL uses `user-review-requested` instead.
 
+A third lever is turning off whole categories of alert. If CI noise is not
+useful to you, for instance:
+
 ```bash
-MAX_AGE_DAYS=5
-INCLUDE_TEAM_REVIEWS=false
-IGNORE_DRAFTS=true
-IGNORE_AUTHORS=app/dependabot,app/renovate
+ptal config mute-events checks_failed,checks_fixed
+```
+
+All together, from the terminal:
+
+```bash
+ptal config max-age-days 5
+ptal config include-team-reviews false
+ptal config ignore-authors app/dependabot,app/renovate
+ptal config mute-events checks_failed,checks_fixed
 ```
 
 ---
@@ -183,6 +200,8 @@ IGNORE_AUTHORS=app/dependabot,app/renovate
 
 ```
 ptal setup       Connect Telegram and discover your chat
+ptal config      Read and change settings
+ptal events      List alert types and which are on
 ptal doctor      Diagnose token, chat, connectivity and service
 ptal once        Run a single cycle and print what it found
 ptal panel       Send a panel with the current state to Telegram
@@ -190,9 +209,85 @@ ptal run         Keep running (what the service executes)
 ptal install     Register to start with the system
 ptal uninstall   Remove the registration
 ptal status      Show the service and the last sync
+ptal version     Print the version
 ```
 
-`once` works before Telegram is configured, so you can check the search first.
+### `ptal config` — change settings from the terminal
+
+No need to edit `.env` by hand. Keys are case-insensitive and accept hyphens,
+so `poll-interval` and `POLL_INTERVAL` are the same setting.
+
+```bash
+ptal config                              # list everything with current values
+ptal config poll-interval                # read one value
+ptal config poll-interval 5m             # change it
+```
+
+Values are validated before they are written, so a typo is an error now rather
+than a daemon that fails to start later:
+
+```bash
+$ ptal config poll-interval 5
+error: POLL_INTERVAL: not a duration: "5" (try 2m, 30s, 1h)
+```
+
+When the service is running it is restarted for you, because configuration is
+read once at startup — otherwise the change would silently do nothing.
+
+```bash
+$ ptal config poll-interval 5m
+✓ poll-interval: 2m0s → 5m
+✓ service restarted
+```
+
+Common ones:
+
+```bash
+ptal config poll-interval 5m                        # how often to check GitHub
+ptal config max-age-days 3                          # only recently active PRs
+ptal config quiet-hours 23:00-08:00                 # deliver silently at night
+ptal config watch-repos octocat/hello-world,acme    # limit to repos or orgs
+ptal config max-per-hour 10                         # hard ceiling on messages
+```
+
+### `ptal events` — choose which alerts you get
+
+```bash
+$ ptal events
+
+Alert types:
+
+  ● on   review_requested     Someone asked you to review a pull request
+  ● on   mentioned            Someone @-mentioned you
+  ● on   assigned             A pull request was assigned to you
+  ● on   changes_requested    A reviewer requested changes on your pull request
+  ● on   approved             Your pull request was approved
+  ○ off  checks_failed        CI failed on your pull request
+  ○ off  checks_fixed         CI recovered on your pull request
+  ● on   conflict             Your pull request developed a merge conflict
+  ● on   new_activity         New comments or reviews on a pull request of yours
+  ● on   ready_for_review     A draft you are reviewing became ready
+  ● on   gone                 A pull request was closed or merged
+```
+
+Two ways to control it, and they compose:
+
+```bash
+# Turn off the ones that annoy you, keep the rest
+ptal config mute-events checks_failed,checks_fixed
+
+# Or name only what you want, and nothing else arrives
+ptal config alert-on review_requested,mentioned
+
+# Back to everything
+ptal config mute-events ""
+```
+
+`mute-events` always wins over `alert-on`. Unknown names are rejected — a typo
+in a mute list would otherwise leave you believing an alert was off.
+
+`ptal once` works before Telegram is configured, so you can check the search
+first without connecting the bot.
 
 ---
 
@@ -208,6 +303,24 @@ ptal status      Show the service and the last sync
 `KeepAlive/NetworkState` means the daemon only runs when the network is up. On
 Linux, `enable-linger` is what keeps the service alive after logout — without
 it, PTAL would stop silently.
+
+### Running it somewhere else
+
+Your laptop only alerts you while it is awake. Two alternatives, both using the
+same binary:
+
+**A container**, for a VPS or a home server:
+
+```bash
+docker run -d --restart unless-stopped \
+  -e TELEGRAM_BOT_TOKEN -e TELEGRAM_CHAT_ID -e GH_PAT_TOKEN \
+  -v ptal-state:/data ghcr.io/cristhianzl/telegram-ptal
+```
+
+**GitHub Actions**, if you would rather run nothing at all — see
+[`docs/github-actions.md`](docs/github-actions.md). Note that scheduled
+workflows are not punctual: they can lag 5 to 20 minutes at busy times, and
+GitHub disables the schedule after 60 days without commits.
 
 ---
 

@@ -9,6 +9,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/Cristhianzl/telegram-PTAL/internal/config"
+	"github.com/Cristhianzl/telegram-PTAL/internal/engine"
 )
 
 // version is replaced at build time for releases.
@@ -21,6 +24,8 @@ USAGE
 
 COMMANDS
   setup       Connect Telegram and discover your chat automatically
+  config      Read and change settings (ptal config poll-interval 5m)
+  events      List alert types and which are on
   doctor      Diagnose token, chat, connectivity and service
   once        Run a single cycle and print the result
   panel       Send a panel with the current state to Telegram
@@ -35,6 +40,13 @@ Configuration lives in a .env file. See .env.example for the options.
 
 func main() {
 	log.SetFlags(log.Ltime)
+
+	// The engine owns the event names; config validates against them without
+	// importing it, so the dependency does not run backwards.
+	config.SetEventListValidator(func(v string) error {
+		_, err := engine.ParseKinds(v)
+		return err
+	})
 	if len(os.Args) < 2 {
 		fmt.Print(usage)
 		os.Exit(1)
@@ -47,6 +59,10 @@ func main() {
 	switch os.Args[1] {
 	case "setup":
 		err = cmdSetup(ctx)
+	case "config":
+		err = cmdConfig(configArgs())
+	case "events":
+		err = cmdEvents()
 	case "doctor":
 		err = cmdDoctor(ctx)
 	case "once":

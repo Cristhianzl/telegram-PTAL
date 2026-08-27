@@ -47,7 +47,9 @@ can increase message volume needs care:
 
 - Say in the pull request description how many more messages a typical user
   would receive, and why that is worth it.
-- Adding an event kind means adding it to the table in the README.
+- Adding an event kind means adding it to `engine.AllKinds` with a `Summary()`,
+  and to the table in the README. Without the first, the event exists but
+  cannot be muted — and a test enforces this.
 - Anything that could fire on a state that was merely *observed for the first
   time*, rather than genuinely changed, needs a test. This has caused a real
   bug before: switching data sources filled several fields at once, and every
@@ -68,9 +70,11 @@ can increase message volume needs care:
 |---|---|
 | `cmd/ptal/main.go` | Command dispatch and usage. |
 | `cmd/ptal/commands.go` | The commands themselves. |
-| `internal/config` | Configuration loading, validation, credential discovery. |
+| `cmd/ptal/config_cmd.go` | `ptal config`. |
+| `cmd/ptal/events_cmd.go` | `ptal events`. |
+| `internal/config` | Configuration loading, validation, credential discovery. `settings.go` is the single table that makes an option settable, listable and documented at once. |
 | `internal/githubapi` | GraphQL client, REST search client, and the fallback between them. |
-| `internal/engine` | Snapshot diffing, event rules, anti-spam guards. |
+| `internal/engine` | Snapshot diffing, event rules, anti-spam guards, alert-type filtering. |
 | `internal/store` | State persisted between runs. |
 | `internal/telegram` | Bot API client and message rendering. |
 | `internal/service` | Registering the daemon with systemd, launchd, Task Scheduler. |

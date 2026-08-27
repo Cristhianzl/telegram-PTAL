@@ -38,6 +38,10 @@ type Config struct {
 	// IncludeTeamReviews includes pull requests where the review was
 	// requested from your team rather than from you by name. Off by default.
 	IncludeTeamReviews bool
+	// AlertOn, when non-empty, is the only set of event kinds delivered.
+	AlertOn []string
+	// MuteEvents are event kinds never delivered. Applied after AlertOn.
+	MuteEvents []string
 	// MaxAgeDays drops pull requests with no activity in the last N days.
 	// Zero disables the filter. This is what separates what is alive from an
 	// archive of pull requests abandoned years ago.
@@ -138,6 +142,8 @@ func Load() (*Config, error) {
 		c.IgnoreAuthors = append([]string(nil), defaultIgnoredAuthors...)
 	}
 	c.WatchRepos = splitList(get("WATCH_REPOS"))
+	c.AlertOn = splitList(get("ALERT_ON"))
+	c.MuteEvents = splitList(get("MUTE_EVENTS"))
 
 	// With no token in the file, try the GitHub CLI: anyone already using
 	// `gh` does not need to create a credential at all. USE_GH_CLI=true
@@ -176,9 +182,20 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// SaveChatID writes the discovered chat ID back into .env, preserving
-// comments and the order of existing lines.
+// SaveChatID writes the discovered chat ID back into .env.
 func (c *Config) SaveChatID(chatID string) error {
+	if err := c.SetValue("TELEGRAM_CHAT_ID", chatID); err != nil {
+		return err
+	}
+	c.TelegramChat = chatID
+	return nil
+}
+
+// SetValue writes one key into the .env file, preserving comments, blank
+// lines and the order of the entries already there. Rewriting the file from
+// the parsed map instead would silently discard every comment the user has,
+// including the ones the template ships with.
+func (c *Config) SetValue(key, value string) error {
 	path := c.SourcePath
 	if path == "" {
 		path = ".env"
@@ -193,21 +210,19 @@ func (c *Config) SaveChatID(chatID string) error {
 
 	replaced := false
 	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "TELEGRAM_CHAT_ID=") {
-			lines[i] = "TELEGRAM_CHAT_ID=" + chatID
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, key+"=") ||
+			strings.HasPrefix(trimmed, "export "+key+"=") {
+			lines[i] = key + "=" + value
 			replaced = true
 			break
 		}
 	}
 	if !replaced {
-		lines = append(lines, "TELEGRAM_CHAT_ID="+chatID)
+		lines = append(lines, key+"="+value)
 	}
 
-	if err := writeFilePrivate(path, []byte(strings.Join(lines, "\n")+"\n")); err != nil {
-		return err
-	}
-	c.TelegramChat = chatID
-	return nil
+	return writeFilePrivate(path, []byte(strings.Join(lines, "\n")+"\n"))
 }
 
 // writeFilePrivate writes atomically with restrictive permissions: the file

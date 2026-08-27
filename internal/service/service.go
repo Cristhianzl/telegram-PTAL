@@ -77,6 +77,23 @@ func Uninstall() error {
 	return fmt.Errorf("unsupported system: %s", runtime.GOOS)
 }
 
+// Restart reloads the daemon so a configuration change takes effect.
+// Configuration is read once at startup, so changing a setting without this
+// would appear to do nothing until the next reboot.
+func Restart() error {
+	switch runtime.GOOS {
+	case "linux":
+		return run("systemctl", "--user", "restart", Name+".service")
+	case "darwin":
+		target := fmt.Sprintf("gui/%d/%s", os.Getuid(), launchdLabel)
+		return run("launchctl", "kickstart", "-k", target)
+	case "windows":
+		_ = run("schtasks", "/end", "/tn", Name)
+		return run("schtasks", "/run", "/tn", Name)
+	}
+	return fmt.Errorf("unsupported system: %s", runtime.GOOS)
+}
+
 // Status describes whether the service is installed and running.
 func Status() Info {
 	info := Info{Manager: Manager()}
@@ -128,13 +145,18 @@ PrivateTmp=true
 WantedBy=default.target
 `
 
+// renderSystemdUnit is separated from installation so the unit file can be
+// asserted on without touching the system.
+func renderSystemdUnit(exe, wd string) string {
+	return fmt.Sprintf(systemdTemplate, exe, wd)
+}
+
 func installSystemd(exe, wd string) error {
 	path := systemdUnitPath()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	unit := fmt.Sprintf(systemdTemplate, exe, wd)
-	if err := os.WriteFile(path, []byte(unit), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(renderSystemdUnit(exe, wd)), 0o644); err != nil {
 		return err
 	}
 
@@ -199,6 +221,12 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 </plist>
 `
 
+// renderLaunchdPlist is separated from installation for the same reason as
+// renderSystemdUnit.
+func renderLaunchdPlist(exe, wd, logDir string) string {
+	return fmt.Sprintf(launchdTemplate, launchdLabel, exe, wd, logDir, logDir)
+}
+
 func installLaunchd(exe, wd string) error {
 	path := launchdPlistPath()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -208,8 +236,7 @@ func installLaunchd(exe, wd string) error {
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		return err
 	}
-	plist := fmt.Sprintf(launchdTemplate, launchdLabel, exe, wd, logDir, logDir)
-	if err := os.WriteFile(path, []byte(plist), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(renderLaunchdPlist(exe, wd, logDir)), 0o644); err != nil {
 		return err
 	}
 
