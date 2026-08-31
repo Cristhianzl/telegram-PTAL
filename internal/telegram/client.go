@@ -162,6 +162,23 @@ type Button struct {
 	Data string `json:"callback_data,omitempty"`
 }
 
+// Command is one entry in Telegram's native command menu.
+type Command struct {
+	Command     string `json:"command"`
+	Description string `json:"description"`
+}
+
+// SetCommands registers the command menu with Telegram.
+//
+// This is what puts the "/" menu button in the chat, so the commands are
+// discoverable without anyone having to know they should type /help first.
+// Telegram stores this per bot, so it only needs sending when it changes -
+// but sending it on every start is cheap and keeps it honest after an
+// upgrade adds a command.
+func (c *Client) SetCommands(ctx context.Context, commands []Command) error {
+	return c.call(ctx, "setMyCommands", map[string]any{"commands": commands}, nil)
+}
+
 // AnswerCallback acknowledges a button tap.
 //
 // Telegram shows a loading spinner on the button until this is called, so

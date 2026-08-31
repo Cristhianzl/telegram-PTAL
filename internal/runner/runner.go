@@ -264,6 +264,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Commands are answered on their own goroutine: long polling blocks for
 	// up to 30 seconds at a time and must not delay the sync cycle.
 	r.resolveBotUsername(ctx)
+	// Registering the menu makes the commands discoverable from the chat's
+	// "/" button, rather than only to someone who thinks to type /help.
+	if err := r.tg.SetCommands(ctx, menuCommands()); err != nil {
+		r.log.Printf("could not register the command menu: %v", err)
+	}
 	go r.ListenCommands(ctx)
 
 	const maxBackoff = 15 * time.Minute

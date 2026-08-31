@@ -11,21 +11,55 @@ import (
 	"github.com/Cristhianzl/telegram-PTAL/internal/telegram"
 )
 
-// telegramHelp is what /help answers with.
-const telegramHelp = `<b>PTAL commands</b>
+// telegramCommands is the single list behind both Telegram's native command
+// menu and /help. Keeping one source means the menu cannot drift from what
+// the bot actually answers.
+var telegramCommands = []struct {
+	Name, Args, Description string
+	// Menu excludes aliases and argument-only forms, which would clutter
+	// Telegram's picker without adding anything.
+	Menu bool
+}{
+	{"prs", "", "Your pull requests right now", true},
+	{"prs", "&lt;repo&gt;", "Every open PR in a repository", false},
+	{"prs", "&lt;repo&gt; me", "Only the ones you opened", false},
+	{"repo", "&lt;repo&gt;", "The same as /prs &lt;repo&gt;", false},
+	{"review", "&lt;repo&gt; &lt;n&gt; [instructions]", "Review a PR with Claude Code", true},
+	{"status", "", "Last sync, mode, what is tracked", true},
+	{"pause", "2h", "Stop alerting for a while", true},
+	{"resume", "", "Start alerting again", true},
+	{"clear", "", "Delete every message I have sent", true},
+	{"help", "", "This list", true},
+}
 
-/prs - your pull requests right now
-/prs &lt;repo&gt; - every open PR in a repository
-/prs &lt;repo&gt; me - only the ones you opened
-/repo &lt;repo&gt; - same as /prs &lt;repo&gt;
-/status - last sync, mode, rate limit
-/clear - delete every message I have sent
-/pause 2h - stop alerting for a while
-/resume - start alerting again
-/review &lt;repo&gt; &lt;number&gt; [instructions] - review a PR with Claude
-/help - this
+// telegramHelp renders the command list for /help.
+func telegramHelp() string {
+	var b strings.Builder
+	b.WriteString("<b>PTAL commands</b>\n\n")
+	for _, c := range telegramCommands {
+		if c.Args != "" {
+			fmt.Fprintf(&b, "/%s %s - %s\n", c.Name, c.Args, c.Description)
+		} else {
+			fmt.Fprintf(&b, "/%s - %s\n", c.Name, c.Description)
+		}
+	}
+	b.WriteString("\n<i>Settings live on the machine running me: <code>ptal config</code></i>")
+	return b.String()
+}
 
-<i>Settings live on the machine running me: `+"`ptal config`"+`</i>`
+// menuCommands is what Telegram shows in its command picker.
+func menuCommands() []telegram.Command {
+	var out []telegram.Command
+	seen := map[string]bool{}
+	for _, c := range telegramCommands {
+		if !c.Menu || seen[c.Name] {
+			continue
+		}
+		seen[c.Name] = true
+		out = append(out, telegram.Command{Command: c.Name, Description: c.Description})
+	}
+	return out
+}
 
 // ListenCommands answers Telegram commands until the context is cancelled.
 //
@@ -96,8 +130,9 @@ func (r *Runner) handleCommand(ctx context.Context, text string) {
 	args = strings.TrimSpace(args)
 
 	switch command {
-	case "/start", "/help":
-		r.reply(ctx, telegramHelp)
+	// /commands and /start are what people try before /help.
+	case "/start", "/help", "/commands", "/cmd":
+		r.reply(ctx, telegramHelp())
 	case "/prs":
 		if args != "" {
 			r.replyWithRepo(ctx, args)

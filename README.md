@@ -266,6 +266,9 @@ $ ptal pause 2h
 
 The bot answers commands in the chat, so you do not need the terminal:
 
+The bot registers these with Telegram, so they show up in the chat's `/`
+menu — no need to remember them.
+
 ```
 /prs           your pull requests right now
 /prs <repo>    every open PR in a repository
@@ -275,7 +278,7 @@ The bot answers commands in the chat, so you do not need the terminal:
 /pause 2h      stop alerting for a while
 /resume        start alerting again
 /review <repo> <n>  review a pull request with Claude
-/help          this list  (/start does the same)
+/help          this list  (/start and /commands do the same)
 ```
 
 ### Reviewing a pull request with Claude

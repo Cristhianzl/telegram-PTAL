@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-31
+
+### Added
+
+- The bot registers its commands with Telegram, so they appear in the chat's
+  `/` menu instead of only being findable by typing `/help` first. `/commands`
+  and `/start` answer with the list too.
+
 ### Fixed
 
 - Falling back to public search is no longer permanent. A daemon starting at
@@ -96,6 +104,7 @@ First release.
   technically open and would otherwise drown out the rest.
 - The first run is silent, recording what already exists without announcing it.
 
-[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Cristhianzl/telegram-PTAL/releases/tag/v0.1.0

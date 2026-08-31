@@ -312,3 +312,55 @@ func TestOnlyOneReviewRunsAtATime(t *testing.T) {
 		t.Error("releasing should let the next one through")
 	}
 }
+
+// The menu and /help come from one list, so what Telegram offers cannot
+// drift from what the bot actually answers.
+func TestCommandMenuMatchesWhatIsAnswered(t *testing.T) {
+	// Every command the handler accepts, from the switch in commands.go.
+	answered := map[string]bool{
+		"prs": true, "repo": true, "review": true, "status": true,
+		"pause": true, "resume": true, "clear": true, "help": true,
+	}
+
+	for _, c := range menuCommands() {
+		if !answered[c.Command] {
+			t.Errorf("/%s is offered in the menu but not handled", c.Command)
+		}
+		if c.Description == "" {
+			t.Errorf("/%s has no description; Telegram requires one", c.Command)
+		}
+		// Telegram rejects names that are not lowercase letters, digits
+		// and underscores.
+		for _, r := range c.Command {
+			if !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9') && r != '_' {
+				t.Errorf("/%s has a character Telegram will reject: %q", c.Command, r)
+			}
+		}
+	}
+}
+
+// The menu is a picker, not documentation: argument forms and aliases would
+// clutter it without adding anything.
+func TestMenuHasNoDuplicatesOrAliases(t *testing.T) {
+	seen := map[string]bool{}
+	for _, c := range menuCommands() {
+		if seen[c.Command] {
+			t.Errorf("/%s appears twice in the menu", c.Command)
+		}
+		seen[c.Command] = true
+	}
+	if seen["repo"] {
+		t.Error("/repo is an alias of /prs and should stay out of the menu")
+	}
+}
+
+// /help must document every command, including the ones kept out of the menu.
+func TestHelpDocumentsEveryCommand(t *testing.T) {
+	help := telegramHelp()
+
+	for _, name := range []string{"prs", "repo", "review", "status", "pause", "resume", "clear", "help"} {
+		if !strings.Contains(help, "/"+name) {
+			t.Errorf("/help does not mention /%s", name)
+		}
+	}
+}
