@@ -551,6 +551,17 @@ enterprise policy blocks it. Use `gh` or a classic PAT with SSO authorized.
 **Search returns nothing** — `WATCH_REPOS` or `MAX_AGE_DAYS` may be filtering
 everything out. `make doctor` prints both when the result is empty.
 
+**"This repository is not visible"** — the credential in use cannot see it.
+A fine-grained token only sees the repositories it was explicitly granted, and
+an unauthenticated search sees no private repository at all. `ptal doctor`
+shows which credential is in use.
+
+**It says `mode public` when it should be `rich`** — the token was rejected, or
+was unavailable when the daemon started. The GitHub CLI keeps its token in the
+system keyring, which is still locked while services start at boot; PTAL
+retries the authenticated path every 10 minutes and picks the CLI token up
+once the keyring unlocks.
+
 **The service stopped after logout (Linux)** — `loginctl enable-linger $USER`.
 `ptal install` does this, but it can fail silently on some systems.
 

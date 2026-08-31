@@ -264,6 +264,12 @@ func (c *PublicClient) search(ctx context.Context, query string) ([]restItem, er
 		case resp.StatusCode >= 500:
 			lastErr = fmt.Errorf("GitHub returned %d", resp.StatusCode)
 
+		case resp.StatusCode == http.StatusUnprocessableEntity:
+			// GitHub answers 422 when the query names a repository the
+			// caller cannot see, which reads as "Validation Failed" and
+			// sends people looking for a syntax error that is not there.
+			return nil, &NotVisibleError{Query: query, Anonymous: c.Token == ""}
+
 		default:
 			return nil, fmt.Errorf("GitHub returned %d: %s", resp.StatusCode, apiMessage(body))
 		}

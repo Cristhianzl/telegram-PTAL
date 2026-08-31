@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Falling back to public search is no longer permanent. A daemon starting at
+  boot finds the system keyring locked, cannot read the GitHub CLI's token,
+  falls back to whatever is in `.env`, and can be rejected by an organization
+  policy — after which it stayed in reduced mode until someone restarted it by
+  hand. The authenticated path is now retried every 10 minutes, re-reading the
+  CLI token, so an unlock minutes after boot is picked up on its own.
+- A search naming a repository the credential cannot see now says so. GitHub
+  answers `422 Validation Failed`, which sent people hunting for a syntax
+  error that was not there.
+
 ## [0.2.0] - 2026-08-27
 
 ### Added

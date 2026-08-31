@@ -229,6 +229,26 @@ func (e *PolicyError) Error() string {
 	return "organization policy rejected the token: " + e.Msg
 }
 
+// NotVisibleError means the search named a repository the current credential
+// cannot see. GitHub reports this as a validation failure, which is
+// misleading: the query is well formed, the caller simply has no access.
+type NotVisibleError struct {
+	Query string
+	// Anonymous records that the search carried no token at all, which is
+	// the usual cause for a private repository.
+	Anonymous bool
+}
+
+func (e *NotVisibleError) Error() string {
+	if e.Anonymous {
+		return "this repository is not visible without a token - it is private, " +
+			"or the search ran unauthenticated. Check `ptal doctor`"
+	}
+	return "this repository is not visible to the current token. " +
+		"A fine-grained token only sees the repositories it was granted; " +
+		"check `ptal doctor` for which credential is in use"
+}
+
 // RateLimitError carries how long to wait before the next attempt.
 type RateLimitError struct {
 	RetryAfter time.Duration

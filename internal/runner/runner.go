@@ -42,6 +42,12 @@ func New(cfg *config.Config, state *store.State, logger *log.Logger) *Runner {
 	// requests per minute.
 	src := githubapi.NewSource(cfg.GitHubToken, cfg.Login, cfg.WatchRepos,
 		cfg.IgnoreAuthors, cfg.MaxAgeDays, cfg.IncludeTeamReviews)
+
+	// The GitHub CLI keeps its token in the system keyring, which is still
+	// locked while services start at boot. Reading it once at startup meant
+	// the daemon spent the rest of the session on whatever weaker credential
+	// happened to be in .env.
+	src.SetTokenRefresher(config.GitHubCLIToken)
 	if cfg.PublicOnly {
 		src.UsePublicOnly(false)
 	}

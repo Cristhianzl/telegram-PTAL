@@ -4,7 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 )
+
+// retryRichAfter is how long the rich path stays given up on. Short enough
+// that a keyring unlocked minutes after boot is picked up on its own, long
+// enough that a genuine policy block is not retried every cycle.
+const retryRichAfter = 10 * time.Minute
 
 // Mode indicates where the data is coming from.
 type Mode string
@@ -39,6 +45,25 @@ type Source struct {
 	mode  Mode
 	login string
 
+	// degradedAt is when the rich path was last given up on, and retryAfter
+	// how long to wait before trying it again.
+	//
+	// Degrading permanently was a real failure: a daemon that starts at boot
+	// finds the system keyring still locked, cannot read the GitHub CLI's
+	// token, falls back to a weaker one, gets rejected by an organization
+	// policy, and then stays in reduced mode until someone restarts it by
+	// hand - long after the keyring unlocked.
+	degradedAt time.Time
+	retryAfter time.Duration
+	// refreshToken re-reads the preferred credential, for the same reason.
+	refreshToken func() string
+
+	// The search parameters, kept so the rich client can be rebuilt on retry.
+	repos              []string
+	ignoreAuthors      []string
+	maxAgeDays         int
+	includeTeamReviews bool
+
 	// OnModeChange fires when the mode changes, so the daemon can say so.
 	OnModeChange func(from, to Mode, reason string)
 }
@@ -59,6 +84,10 @@ func NewSource(token, login string, repos, ignoreAuthors []string, maxAgeDays in
 	s.public.IgnoreAuthors = ignoreAuthors
 	s.public.MaxAgeDays = maxAgeDays
 	s.public.IncludeTeamReviews = includeTeamReviews
+	s.repos, s.ignoreAuthors = repos, ignoreAuthors
+	s.maxAgeDays, s.includeTeamReviews = maxAgeDays, includeTeamReviews
+
+	s.retryAfter = retryRichAfter
 
 	if token != "" {
 		s.rich = New(token)
@@ -95,9 +124,42 @@ func (s *Source) Resolve(ctx context.Context) error {
 	return nil
 }
 
+// SetTokenRefresher installs a callback that re-reads the preferred
+// credential. It is consulted when retrying the rich path, so a token that
+// was unavailable at startup can still be picked up later.
+func (s *Source) SetTokenRefresher(fn func() string) { s.refreshToken = fn }
+
+// maybeRetryRich puts the rich path back in play once the backoff has passed,
+// picking up a better credential if one became available.
+func (s *Source) maybeRetryRich() {
+	if s.mode != ModePublic || s.degradedAt.IsZero() {
+		return
+	}
+	if time.Since(s.degradedAt) < s.retryAfter {
+		return
+	}
+	s.degradedAt = time.Time{}
+
+	if s.refreshToken != nil {
+		if token := s.refreshToken(); token != "" && token != s.public.Token {
+			s.public.Token = token
+			s.rich = New(token)
+			s.rich.Repos = s.repos
+			s.rich.IgnoreAuthors = s.ignoreAuthors
+			s.rich.MaxAgeDays = s.maxAgeDays
+			s.rich.IncludeTeamReviews = s.includeTeamReviews
+		}
+	}
+	if s.rich != nil {
+		s.switchMode(ModeRich, "retrying the authenticated path")
+	}
+}
+
 // Fetch retrieves the picture of your pull requests, falling back to public
 // mode if an organization policy blocks the token.
 func (s *Source) Fetch(ctx context.Context) (*Snapshot, error) {
+	s.maybeRetryRich()
+
 	if s.mode == ModeRich && s.rich != nil {
 		snap, err := s.rich.Fetch(ctx)
 		if err == nil {
@@ -108,6 +170,7 @@ func (s *Source) Fetch(ctx context.Context) (*Snapshot, error) {
 		if errors.As(err, &policyErr) {
 			// The token is valid, but the organization rejects this kind of
 			// token. The same data is usually publicly readable.
+			s.degradedAt = time.Now()
 			s.switchMode(ModePublic, policyErr.Msg)
 			return s.fetchPublic(ctx)
 		}

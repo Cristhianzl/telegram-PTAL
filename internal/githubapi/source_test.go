@@ -2,6 +2,7 @@ package githubapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -350,5 +351,107 @@ func TestMeWithoutALoginIsAnError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "GITHUB_LOGIN") {
 		t.Errorf("the error should say how to fix it: %v", err)
+	}
+}
+
+// Degrading used to be permanent. A daemon starting at boot finds the system
+// keyring locked, cannot read the CLI's token, falls back to a weaker one,
+// gets rejected by an organization policy — and then stayed in reduced mode
+// until someone restarted it by hand, long after the keyring unlocked.
+func TestDegradedModeIsRetried(t *testing.T) {
+	graphql := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, policyBlockedResponse)
+	}))
+	defer graphql.Close()
+	rest := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"total_count":0,"items":[]}`)
+	}))
+	defer rest.Close()
+
+	src := NewSource("weak-token", "alice", nil, nil, 0, false)
+	src.rich.SetEndpoint(graphql.URL)
+	src.public.SetEndpoint(rest.URL)
+
+	if _, err := src.Fetch(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if src.Mode() != ModePublic {
+		t.Fatalf("should have degraded, mode = %s", src.Mode())
+	}
+
+	// Before the backoff elapses, nothing changes.
+	src.maybeRetryRich()
+	if src.Mode() != ModePublic {
+		t.Error("the rich path must not be retried immediately")
+	}
+
+	// Once it has, and a better credential is available, the rich path
+	// comes back.
+	src.degradedAt = time.Now().Add(-2 * retryRichAfter)
+	src.SetTokenRefresher(func() string { return "the-good-token" })
+
+	src.maybeRetryRich()
+
+	if src.Mode() != ModeRich {
+		t.Errorf("mode = %s, want the rich path restored once a better token appeared", src.Mode())
+	}
+	if src.public.Token != "the-good-token" {
+		t.Errorf("the refreshed token should also be used for search, got %q", src.public.Token)
+	}
+}
+
+// Retrying must not lose the search settings, or the restored path would
+// silently start watching the wrong repositories.
+func TestRetryKeepsSearchSettings(t *testing.T) {
+	src := NewSource("weak", "alice", []string{"acme/api"}, []string{"app/bot"}, 7, true)
+	src.degradedAt = time.Now().Add(-2 * retryRichAfter)
+	src.mode = ModePublic
+	src.SetTokenRefresher(func() string { return "better" })
+
+	src.maybeRetryRich()
+
+	if src.rich.MaxAgeDays != 7 {
+		t.Errorf("MaxAgeDays = %d, want 7", src.rich.MaxAgeDays)
+	}
+	if !src.rich.IncludeTeamReviews {
+		t.Error("IncludeTeamReviews was lost on retry")
+	}
+	if len(src.rich.Repos) != 1 || src.rich.Repos[0] != "acme/api" {
+		t.Errorf("Repos = %v", src.rich.Repos)
+	}
+	if len(src.rich.IgnoreAuthors) != 1 {
+		t.Errorf("IgnoreAuthors = %v", src.rich.IgnoreAuthors)
+	}
+}
+
+// GitHub answers 422 when a search names a repository the caller cannot see.
+// "Validation Failed" sends people hunting for a syntax error that is not
+// there, so the message has to say what actually happened.
+func TestInvisibleRepositoryExplainsItself(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		fmt.Fprint(w, `{"message":"Validation Failed","errors":[{"code":"invalid"}]}`)
+	}))
+	defer srv.Close()
+
+	c := NewPublic("alice")
+	c.SetEndpoint(srv.URL)
+
+	_, err := c.RepoPullRequests(context.Background(), "private/repo", "", 10)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	var notVisible *NotVisibleError
+	if !errors.As(err, &notVisible) {
+		t.Fatalf("error should be a NotVisibleError, got %T: %v", err, err)
+	}
+	if strings.Contains(err.Error(), "Validation Failed") {
+		t.Errorf("the raw GitHub wording should not be forwarded: %v", err)
+	}
+	for _, want := range []string{"private", "token"} {
+		if !strings.Contains(strings.ToLower(err.Error()), want) {
+			t.Errorf("the message should mention %q: %v", want, err)
+		}
 	}
 }
