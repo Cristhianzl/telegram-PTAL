@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+
+- `docs/credentials.md` explains why being logged into `gh` is not the same as
+  the token being readable at boot, and which credential suits a desktop, an
+  always-on machine, and a server.
+
 ## [0.2.3] - 2026-09-03
 
 ### Fixed

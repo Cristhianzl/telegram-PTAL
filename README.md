@@ -139,22 +139,27 @@ regardless of where you were standing when you ran it.
 There are three paths. PTAL tries them in order and falls through on its
 own.
 
-### The GitHub CLI (easiest)
+### The GitHub CLI (easiest, on a machine you log into)
 
 If you already have [`gh`](https://cli.github.com) installed and authenticated,
 you do not need to create a token at all:
 
 ```bash
 gh auth login              # if you have not already
-echo "USE_GH_CLI=true" >> .env
+ptal config use-gh-cli true
 ```
 
 The CLI's token is OAuth, carries the `repo` scope, and — unlike fine-grained
 tokens — passes organization policies that would reject other token types. It
-stays in your system keyring rather than in `.env`.
+stays in your system keyring rather than in a file.
 
-> On a headless server the keyring may be locked and `gh auth token` fails. Use
-> a token in `.env` there.
+> **Being logged into `gh` is not quite enough on its own.** The keyring
+> holding that token is unlocked by *your login*, and a daemon that starts with
+> the system starts before that — so it comes up with no credential and cannot
+> see private repositories until you log in. PTAL retries every minute and
+> recovers on its own, but on a machine you rarely log into graphically, or a
+> server, use a token instead. [docs/credentials.md](docs/credentials.md)
+> covers all three setups.
 
 ### A personal access token
 
@@ -178,6 +183,9 @@ organization's repositories vanish from results with no explicit error.
 For public repositories only, set `GITHUB_LOGIN` to your username and skip the
 token. Anonymous search allows 10 requests per minute, which is enough at the
 default two-minute interval.
+
+Which credential to pick for which kind of machine, and what each one can
+actually see: [docs/credentials.md](docs/credentials.md).
 
 ---
 
