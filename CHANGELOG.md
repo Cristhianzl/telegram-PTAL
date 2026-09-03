@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-02
+
 ### Fixed
 
 - A daemon that starts with no credential at all now retries, instead of
@@ -117,7 +119,8 @@ First release.
   technically open and would otherwise drown out the rest.
 - The first run is silent, recording what already exists without announcing it.
 
-[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Cristhianzl/telegram-PTAL/releases/tag/v0.1.0
