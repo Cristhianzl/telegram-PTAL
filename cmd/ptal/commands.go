@@ -361,6 +361,7 @@ func cmdRepo(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	r.Source().EnsureCredential()
 	if err := r.Source().Resolve(ctx); err != nil {
 		return err
 	}

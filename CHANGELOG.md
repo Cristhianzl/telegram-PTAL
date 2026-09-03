@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Asking for something no longer waits out the credential backoff. The retry
+  interval exists to stop the background loop shelling out to the CLI every
+  couple of minutes; it was also making a person who typed `/prs` wait, while
+  a readable credential sat one call away.
+- The first retry now comes after a minute rather than ten, widening to ten
+  only after repeated failures. A daemon that started before the keyring
+  unlocked could be blind for hours; recovering resets the interval.
+- Messages in the chat that are not commands get an answer instead of silence.
+  Typing `Ptal doctor` there did nothing at all, which reads as "the diagnosis
+  ran and found nothing" — the opposite of what happened. Machine-only
+  commands are now named as such, with the Telegram equivalent where there is
+  one, and ordinary conversation is still left alone.
+- `/status` says when searches are running without a credential.
+
 ## [0.2.2] - 2026-09-02
 
 ### Fixed

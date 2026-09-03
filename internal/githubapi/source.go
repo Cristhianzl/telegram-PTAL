@@ -7,10 +7,13 @@ import (
 	"time"
 )
 
-// retryRichAfter is how long the rich path stays given up on. Short enough
-// that a keyring unlocked minutes after boot is picked up on its own, long
-// enough that a genuine policy block is not retried every cycle.
-const retryRichAfter = 10 * time.Minute
+// The rich path is retried on a widening interval: often at first, because a
+// keyring usually unlocks within a minute or two of someone logging in, then
+// rarely, because a genuine policy rejection will not fix itself.
+const (
+	retryRichInitial = time.Minute
+	retryRichMax     = 10 * time.Minute
+)
 
 // Mode indicates where the data is coming from.
 type Mode string
@@ -87,7 +90,7 @@ func NewSource(token, login string, repos, ignoreAuthors []string, maxAgeDays in
 	s.repos, s.ignoreAuthors = repos, ignoreAuthors
 	s.maxAgeDays, s.includeTeamReviews = maxAgeDays, includeTeamReviews
 
-	s.retryAfter = retryRichAfter
+	s.retryAfter = retryRichInitial
 	// Starting without a credential is the same situation as degrading into
 	// one: the daemon boots before the system keyring unlocks, so the token
 	// simply is not readable yet. Marking the moment is what lets the retry
@@ -136,8 +139,8 @@ func (s *Source) Resolve(ctx context.Context) error {
 // was unavailable at startup can still be picked up later.
 func (s *Source) SetTokenRefresher(fn func() string) { s.refreshToken = fn }
 
-// maybeRetryRich puts the rich path back in play once the backoff has passed,
-// picking up a credential that became available in the meantime.
+// maybeRetryRich retries the authenticated path if the backoff has elapsed.
+// This is the background path, called on every cycle.
 func (s *Source) maybeRetryRich() {
 	if s.mode != ModePublic || s.degradedAt.IsZero() {
 		return
@@ -145,8 +148,27 @@ func (s *Source) maybeRetryRich() {
 	if time.Since(s.degradedAt) < s.retryAfter {
 		return
 	}
-	s.degradedAt = time.Time{}
+	s.tryRich()
+}
 
+// EnsureCredential tries to obtain a credential right now, ignoring the
+// backoff.
+//
+// The backoff exists to stop the background loop shelling out to the CLI
+// every couple of minutes. It should never make a person wait: when someone
+// explicitly asks for something, reading the keyring again costs a few
+// milliseconds, and the alternative is telling them to go check `doctor`
+// while a working credential sits one call away.
+func (s *Source) EnsureCredential() {
+	if s.Authenticated() && s.mode == ModeRich {
+		return
+	}
+	s.tryRich()
+}
+
+// tryRich attempts to restore the authenticated path, picking up a credential
+// that became readable since the last attempt.
+func (s *Source) tryRich() {
 	if s.refreshToken != nil {
 		if token := s.refreshToken(); token != "" && token != s.public.Token {
 			s.public.Token = token
@@ -157,13 +179,20 @@ func (s *Source) maybeRetryRich() {
 			s.rich.IncludeTeamReviews = s.includeTeamReviews
 		}
 	}
+
 	if s.rich != nil {
+		s.degradedAt = time.Time{}
+		s.retryAfter = retryRichInitial
 		s.switchMode(ModeRich, "retrying the authenticated path")
 		return
 	}
-	// Still nothing readable. Wait another interval rather than trying on
-	// every cycle, which would shell out to the CLI every two minutes.
+
+	// Still nothing readable. Widen the interval rather than trying on every
+	// cycle, which would shell out to the CLI every two minutes.
 	s.degradedAt = time.Now()
+	if s.retryAfter *= 2; s.retryAfter > retryRichMax {
+		s.retryAfter = retryRichMax
+	}
 }
 
 // Authenticated reports whether searches currently carry a credential.

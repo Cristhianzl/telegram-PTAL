@@ -120,8 +120,25 @@ func (r *Runner) ListenCommands(ctx context.Context) {
 	}
 }
 
+// cliOnlyCommands are things that only exist on the machine. Someone typing
+// one here is not making a mistake so much as guessing at a boundary nobody
+// told them about.
+var cliOnlyCommands = map[string]string{
+	"doctor":    "/status shows the same health from here",
+	"config":    "settings live on the machine; /status shows what is in force",
+	"install":   "that one runs on the machine",
+	"uninstall": "that one runs on the machine",
+	"restart":   "that one runs on the machine",
+	"start":     "that one runs on the machine",
+	"stop":      "/pause 2h stops the alerts from here",
+	"events":    "settings live on the machine; /help lists what works here",
+	"once":      "/prs does the same from here",
+	"panel":     "/prs does the same from here",
+}
+
 func (r *Runner) handleCommand(ctx context.Context, text string) {
 	if !strings.HasPrefix(text, "/") {
+		r.handlePlainText(ctx, text)
 		return
 	}
 	// Telegram appends @botname in groups.
@@ -154,6 +171,70 @@ func (r *Runner) handleCommand(ctx context.Context, text string) {
 	default:
 		r.reply(ctx, "Unknown command. Try /help")
 	}
+}
+
+// handlePlainText answers a message that is not a command.
+//
+// Staying silent here was a real failure: someone typed "Ptal doctor" twice,
+// got nothing back, and concluded the diagnosis had run and found nothing —
+// when in fact no command had executed at all. A wrong guess deserves an
+// answer, not silence.
+func (r *Runner) handlePlainText(ctx context.Context, text string) {
+	if reply := plainTextReply(text); reply != "" {
+		r.reply(ctx, reply)
+	}
+}
+
+// plainTextReply builds the answer to a message that is not a command, or
+// returns empty to stay silent.
+//
+// Ordinary conversation is left alone: answering every message would make the
+// bot a nuisance in a chat people also use for notifications.
+func plainTextReply(text string) string {
+	fields := strings.Fields(strings.ToLower(text))
+	if len(fields) == 0 || len(fields) > 3 {
+		return ""
+	}
+
+	// "ptal doctor" - the machine's command typed in here.
+	if fields[0] == "ptal" && len(fields) > 1 {
+		if hint, ok := cliOnlyCommands[fields[1]]; ok {
+			return fmt.Sprintf(
+				"<code>ptal %s</code> runs in a terminal on the machine, not here."+
+					"\n\n%s.\n\n<i>/help for what I can do</i>",
+				telegram.EscapeHTML(fields[1]), telegram.EscapeHTML(hint))
+		}
+		if knownCommand(fields[1]) {
+			return fmt.Sprintf("Here it is just <code>/%s</code> — with the slash.",
+				telegram.EscapeHTML(fields[1]))
+		}
+		return "I do not know that one. <i>/help</i>"
+	}
+
+	// A bare command word, missing its slash.
+	if len(fields) <= 2 {
+		if knownCommand(fields[0]) {
+			return fmt.Sprintf("Try <code>/%s</code> — commands here start with a slash.",
+				telegram.EscapeHTML(fields[0]))
+		}
+		if hint, ok := cliOnlyCommands[fields[0]]; ok {
+			return fmt.Sprintf(
+				"<code>%s</code> runs on the machine, not here."+
+					"\n\n%s.\n\n<i>/help for what I can do</i>",
+				telegram.EscapeHTML(fields[0]), telegram.EscapeHTML(hint))
+		}
+	}
+	return ""
+}
+
+// knownCommand reports whether a bare word names something the bot answers.
+func knownCommand(word string) bool {
+	for _, c := range telegramCommands {
+		if c.Name == word {
+			return true
+		}
+	}
+	return false
 }
 
 // reviewFromTelegram starts a review named by hand, for pull requests that
@@ -223,6 +304,8 @@ func (r *Runner) clearHistory(ctx context.Context) {
 }
 
 func (r *Runner) replyWithPanel(ctx context.Context) {
+	r.source.EnsureCredential()
+
 	snap, _, err := r.Once(ctx)
 	if err != nil {
 		r.reply(ctx, "Could not reach GitHub: "+telegram.EscapeHTML(err.Error()))
@@ -235,6 +318,10 @@ func (r *Runner) replyWithPanel(ctx context.Context) {
 // is a different question from "what needs me" and deliberately ignores the
 // user filters.
 func (r *Runner) replyWithRepo(ctx context.Context, input string) {
+	// A person is waiting: try for a credential now rather than making them
+	// wait out a backoff meant for the background loop.
+	r.source.EnsureCredential()
+
 	if input == "" {
 		r.reply(ctx, "Which repository? Try <code>/prs owner/name</code>, or a "+
 			"short name from the ones you watch.")
@@ -267,6 +354,9 @@ func (r *Runner) replyWithStatus(ctx context.Context) {
 		fmt.Fprintf(&b, "GitHub: <b>@%s</b>\n", telegram.EscapeHTML(r.state.Viewer))
 	}
 	fmt.Fprintf(&b, "Mode: %s\n", r.source.Mode())
+	if !r.source.Authenticated() {
+		b.WriteString("⚠️ <b>No credential</b> - private repositories are invisible\n")
+	}
 	fmt.Fprintf(&b, "Tracking: %d pull requests\n", len(r.state.PRs))
 
 	if !r.state.LastSuccessAt.IsZero() {

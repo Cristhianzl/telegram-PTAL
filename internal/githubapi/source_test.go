@@ -387,7 +387,7 @@ func TestDegradedModeIsRetried(t *testing.T) {
 
 	// Once it has, and a better credential is available, the rich path
 	// comes back.
-	src.degradedAt = time.Now().Add(-2 * retryRichAfter)
+	src.degradedAt = time.Now().Add(-2 * retryRichMax)
 	src.SetTokenRefresher(func() string { return "the-good-token" })
 
 	src.maybeRetryRich()
@@ -404,7 +404,7 @@ func TestDegradedModeIsRetried(t *testing.T) {
 // silently start watching the wrong repositories.
 func TestRetryKeepsSearchSettings(t *testing.T) {
 	src := NewSource("weak", "alice", []string{"acme/api"}, []string{"app/bot"}, 7, true)
-	src.degradedAt = time.Now().Add(-2 * retryRichAfter)
+	src.degradedAt = time.Now().Add(-2 * retryRichMax)
 	src.mode = ModePublic
 	src.SetTokenRefresher(func() string { return "better" })
 
@@ -474,7 +474,7 @@ func TestSourceStartedWithoutTokenStillRetries(t *testing.T) {
 	}
 
 	// The keyring unlocks a few minutes later.
-	src.degradedAt = time.Now().Add(-2 * retryRichAfter)
+	src.degradedAt = time.Now().Add(-2 * retryRichMax)
 	src.SetTokenRefresher(func() string { return "now-readable" })
 
 	src.maybeRetryRich()
@@ -491,7 +491,7 @@ func TestSourceStartedWithoutTokenStillRetries(t *testing.T) {
 // than shelling out to the CLI on every cycle.
 func TestRetryBacksOffWhenStillUnavailable(t *testing.T) {
 	src := NewSource("", "alice", nil, nil, 0, false)
-	src.degradedAt = time.Now().Add(-2 * retryRichAfter)
+	src.degradedAt = time.Now().Add(-2 * retryRichMax)
 	src.SetTokenRefresher(func() string { return "" })
 
 	src.maybeRetryRich()
@@ -501,5 +501,84 @@ func TestRetryBacksOffWhenStillUnavailable(t *testing.T) {
 	}
 	if time.Since(src.degradedAt) > time.Minute {
 		t.Error("the backoff window should have been reset, not left expired")
+	}
+}
+
+// The backoff must never make a person wait. It exists to stop the
+// background loop shelling out to the CLI every couple of minutes; when
+// someone explicitly asks for something, reading the keyring again costs
+// milliseconds and the alternative is telling them to go check `doctor`
+// while a working credential sits one call away.
+func TestEnsureCredentialIgnoresTheBackoff(t *testing.T) {
+	src := NewSource("", "alice", nil, nil, 0, false)
+	src.SetTokenRefresher(func() string { return "now-readable" })
+
+	// Well inside the backoff window: the background retry would skip.
+	src.degradedAt = time.Now()
+	src.maybeRetryRich()
+	if src.Mode() != ModePublic {
+		t.Fatal("the background retry should have respected the backoff")
+	}
+
+	// A person asking gets a fresh attempt regardless.
+	src.EnsureCredential()
+
+	if src.Mode() != ModeRich {
+		t.Errorf("mode = %s, want rich after an explicit request", src.Mode())
+	}
+	if !src.Authenticated() {
+		t.Error("the credential should now be in use for search")
+	}
+}
+
+func TestEnsureCredentialIsCheapWhenAlreadyHealthy(t *testing.T) {
+	calls := 0
+	src := NewSource("already-have-one", "alice", nil, nil, 0, false)
+	src.SetTokenRefresher(func() string { calls++; return "another" })
+
+	src.EnsureCredential()
+
+	if calls != 0 {
+		t.Errorf("a healthy source should not re-read the credential, called %d times", calls)
+	}
+}
+
+// The first retry comes quickly, because a keyring usually unlocks within a
+// minute or two of someone logging in. Waiting ten minutes for the first
+// attempt left a daemon blind for hours after a boot.
+func TestRetryStartsShortThenWidens(t *testing.T) {
+	src := NewSource("", "alice", nil, nil, 0, false)
+	src.SetTokenRefresher(func() string { return "" }) // never becomes readable
+
+	if src.retryAfter != retryRichInitial {
+		t.Errorf("first interval = %s, want %s", src.retryAfter, retryRichInitial)
+	}
+
+	for range 10 {
+		src.degradedAt = time.Now().Add(-2 * src.retryAfter)
+		src.maybeRetryRich()
+	}
+
+	if src.retryAfter != retryRichMax {
+		t.Errorf("interval = %s, want it capped at %s", src.retryAfter, retryRichMax)
+	}
+}
+
+// Recovering resets the interval, so a later hiccup is retried promptly
+// rather than inheriting a widened backoff.
+func TestSuccessfulRetryResetsTheInterval(t *testing.T) {
+	src := NewSource("", "alice", nil, nil, 0, false)
+	src.SetTokenRefresher(func() string { return "" })
+
+	src.degradedAt = time.Now().Add(-2 * src.retryAfter)
+	src.maybeRetryRich()
+	widened := src.retryAfter
+
+	src.SetTokenRefresher(func() string { return "readable" })
+	src.degradedAt = time.Now().Add(-2 * widened)
+	src.maybeRetryRich()
+
+	if src.retryAfter != retryRichInitial {
+		t.Errorf("interval = %s, want it reset to %s after recovering", src.retryAfter, retryRichInitial)
 	}
 }

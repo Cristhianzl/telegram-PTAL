@@ -565,6 +565,10 @@ system keyring, which is still locked while services start at boot; PTAL
 retries the authenticated path every 10 minutes and picks the CLI token up
 once the keyring unlocks. `ptal restart` applies it immediately.
 
+Commands typed in the chat without a slash get an answer rather than silence,
+and `ptal doctor` typed there is told it belongs in a terminal — the boundary
+between the two is not obvious to anyone who has not read this file.
+
 > `ptal doctor` reports on the **running daemon**, not only on the shell you
 > typed it in. That distinction matters: the shell has an unlocked keyring and
 > the daemon may not, so checking the current process alone can show everything

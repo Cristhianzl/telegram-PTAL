@@ -364,3 +364,61 @@ func TestHelpDocumentsEveryCommand(t *testing.T) {
 		}
 	}
 }
+
+// Staying silent on a non-command was a real failure: someone typed
+// "Ptal doctor" twice, got nothing back, and concluded the diagnosis had run
+// and found nothing — when no command had executed at all.
+func TestPlainTextGetsAnAnswer(t *testing.T) {
+	cases := []struct {
+		text     string
+		wantAny  []string
+		wantNone bool
+	}{
+		// A machine-only command typed into the chat.
+		{"Ptal doctor", []string{"machine", "/status"}, false},
+		{"ptal config", []string{"machine"}, false},
+		{"ptal stop", []string{"/pause"}, false},
+		// A real command missing its slash.
+		{"prs", []string{"/prs", "slash"}, false},
+		{"ptal status", []string{"/status"}, false},
+		// Ordinary conversation stays ignored: answering everything would
+		// make the bot a nuisance.
+		{"thanks!", nil, true},
+		{"can you look at the deploy tomorrow morning please", nil, true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.text, func(t *testing.T) {
+			reply := plainTextReply(c.text)
+
+			if c.wantNone {
+				if reply != "" {
+					t.Errorf("should have stayed silent, replied: %s", reply)
+				}
+				return
+			}
+			if reply == "" {
+				t.Fatalf("should have answered %q", c.text)
+			}
+			for _, want := range c.wantAny {
+				if !strings.Contains(reply, want) {
+					t.Errorf("reply should mention %q: %s", want, reply)
+				}
+			}
+		})
+	}
+}
+
+// Every machine-only command needs a hint naming the Telegram equivalent or
+// saying plainly that there is none. A hint that just repeats the problem
+// leaves the person where they started.
+func TestEveryCliOnlyHintPointsSomewhere(t *testing.T) {
+	for name, hint := range cliOnlyCommands {
+		if hint == "" {
+			t.Errorf("%s has no hint", name)
+		}
+		if !strings.Contains(hint, "/") && !strings.Contains(hint, "machine") {
+			t.Errorf("%s: hint should name a command here or say it runs on the machine: %q", name, hint)
+		}
+	}
+}
