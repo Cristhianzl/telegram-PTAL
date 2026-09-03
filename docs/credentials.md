@@ -73,6 +73,21 @@ If your repositories belong to an organization with SSO, click **Configure SSO
 → Authorize** on the token after creating it. Without that step the
 organization's repositories vanish from results with no explicit error.
 
+**Give the token an expiration.** Some enterprises refuse tokens that never
+expire, or that live longer than a year:
+
+```
+The 'AcmeCorp' enterprise forbids access via a personal access tokens (classic)
+if the token's lifetime is greater than 366 days.
+```
+
+This applies to classic and fine-grained tokens alike, and it is easy to walk
+into: "No expiration" is right there in the dropdown, and the token appears to
+work — `gh api user` succeeds, REST search succeeds. Only GraphQL is refused,
+so the symptom is PTAL running in reduced mode with no obvious reason. Pick
+90 days, or anything under a year, and edit the expiration on an existing
+token rather than creating another one.
+
 ### A server, a container, or CI
 
 **A token is the only option.** There is no keyring to unlock, and often no
@@ -134,4 +149,5 @@ daemon mode:  rich (authenticated)
 | CI state, approvals, conflicts | yes | often blocked by policy | yes | no |
 | Notifications API | yes | **no** | yes | no |
 | Survives a reboot without login | **yes** | **yes** | no | n/a |
+| Rejected when it never expires | by some enterprises | by some enterprises | n/a | n/a |
 | Search requests per minute | 30 | 30 | 30 | 10 |

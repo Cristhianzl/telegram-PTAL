@@ -75,9 +75,9 @@ func New(cfg *config.Config, state *store.State, logger *log.Logger) *Runner {
 		if to == githubapi.ModePublic {
 			r.notify(context.Background(),
 				"⚠️ <b>Reduced mode</b>\n\nThe organization rejected your token, so I switched to "+
-					"public search. Pull requests still arrive, but without CI state, approvals "+
-					"or private repositories.\n\n<i>Use a classic PAT with SSO authorized to "+
-					"return to full mode.</i>", false)
+					"REST search. Pull requests still arrive, but without CI state, approvals "+
+					"or merge conflicts.\n\n<i>Check <code>ptal doctor</code> for which credential "+
+					"is in use.</i>", false)
 		}
 	}
 	return r

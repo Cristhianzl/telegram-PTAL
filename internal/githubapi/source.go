@@ -29,12 +29,17 @@ const (
 )
 
 // Description explains the mode in one line, for `doctor` and the logs.
+//
+// It deliberately does not mention private repositories: whether those are
+// visible depends on the credential, not the mode, and public search carrying
+// a token reaches them perfectly well. Use Source.Describe for a line that
+// accounts for both.
 func (m Mode) Description() string {
 	switch m {
 	case ModeRich:
 		return "authenticated GraphQL (with CI, approvals and conflicts)"
 	case ModePublic:
-		return "public search (no CI, approvals or private repositories)"
+		return "REST search (no CI state, approvals or conflicts)"
 	}
 	return string(m)
 }
@@ -193,6 +198,20 @@ func (s *Source) tryRich() {
 	if s.retryAfter *= 2; s.retryAfter > retryRichMax {
 		s.retryAfter = retryRichMax
 	}
+}
+
+// Describe explains what the source can currently see, combining the mode
+// with whether a credential is in play.
+//
+// Those are separate questions and conflating them misled: reduced mode with
+// a token still reaches private repositories, and saying otherwise contradicts
+// the results right above it.
+func (s *Source) Describe() string {
+	base := s.mode.Description()
+	if s.Authenticated() {
+		return base
+	}
+	return base + ", and no private repositories - running without a credential"
 }
 
 // Authenticated reports whether searches currently carry a credential.

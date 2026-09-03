@@ -582,3 +582,21 @@ func TestSuccessfulRetryResetsTheInterval(t *testing.T) {
 		t.Errorf("interval = %s, want it reset to %s after recovering", src.retryAfter, retryRichInitial)
 	}
 }
+
+// Mode and credential answer different questions, and conflating them misled:
+// reduced mode carrying a token still reaches private repositories, so saying
+// it cannot contradicts the results printed right above the message.
+func TestDescribeSeparatesModeFromCredential(t *testing.T) {
+	withToken := NewSource("a-token", "alice", nil, nil, 0, false)
+	withToken.mode = ModePublic
+
+	got := withToken.Describe()
+	if strings.Contains(got, "private") {
+		t.Errorf("public search with a token does reach private repositories: %q", got)
+	}
+
+	anonymous := NewSource("", "alice", nil, nil, 0, false)
+	if got := anonymous.Describe(); !strings.Contains(got, "private") {
+		t.Errorf("without a credential the loss of private repositories must be stated: %q", got)
+	}
+}

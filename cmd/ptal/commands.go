@@ -310,7 +310,7 @@ func cmdOnce(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Printf("\nmode: %s\n", r.Source().Mode().Description())
+	fmt.Printf("\nmode: %s\n", r.Source().Describe())
 	fmt.Printf("pull requests tied to @%s: %d · messages sent: %d\n\n", snap.Viewer, len(snap.PRs), sent)
 	for _, b := range githubapi.AllBuckets {
 		prs := snap.InBucket(b)

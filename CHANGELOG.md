@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Reduced mode no longer claims private repositories are invisible. That
+  depends on the credential, not the mode: REST search carrying a token
+  reaches them perfectly well, and the message contradicted the results
+  printed directly above it.
+
 ### Documentation
 
 - `docs/credentials.md` explains why being logged into `gh` is not the same as
   the token being readable at boot, and which credential suits a desktop, an
-  always-on machine, and a server.
+  always-on machine, and a server. Includes the enterprise rule that refuses
+  tokens without an expiration, which fails only on GraphQL and therefore
+  looks like an unexplained drop into reduced mode.
 
 ## [0.2.3] - 2026-09-03
 
