@@ -455,3 +455,51 @@ func TestInvisibleRepositoryExplainsItself(t *testing.T) {
 		}
 	}
 }
+
+// Starting with no credential is not a permanent condition: the daemon boots
+// before the system keyring unlocks. Without this, a daemon that came up
+// blind stayed blind for the whole session — searching anonymously, unable to
+// see any private repository, and never trying again.
+func TestSourceStartedWithoutTokenStillRetries(t *testing.T) {
+	src := NewSource("", "alice", nil, nil, 0, false)
+
+	if src.Mode() != ModePublic {
+		t.Fatalf("mode = %s, want public with no token", src.Mode())
+	}
+	if src.Authenticated() {
+		t.Error("Authenticated() must be false with no token")
+	}
+	if src.degradedAt.IsZero() {
+		t.Fatal("starting without a credential must be marked, or the retry never fires")
+	}
+
+	// The keyring unlocks a few minutes later.
+	src.degradedAt = time.Now().Add(-2 * retryRichAfter)
+	src.SetTokenRefresher(func() string { return "now-readable" })
+
+	src.maybeRetryRich()
+
+	if src.Mode() != ModeRich {
+		t.Errorf("mode = %s, want rich once the credential became readable", src.Mode())
+	}
+	if !src.Authenticated() {
+		t.Error("the recovered token must also be used for search")
+	}
+}
+
+// When the credential is still unavailable, the retry backs off again rather
+// than shelling out to the CLI on every cycle.
+func TestRetryBacksOffWhenStillUnavailable(t *testing.T) {
+	src := NewSource("", "alice", nil, nil, 0, false)
+	src.degradedAt = time.Now().Add(-2 * retryRichAfter)
+	src.SetTokenRefresher(func() string { return "" })
+
+	src.maybeRetryRich()
+
+	if src.Mode() != ModePublic {
+		t.Errorf("mode = %s, should stay public when nothing is readable", src.Mode())
+	}
+	if time.Since(src.degradedAt) > time.Minute {
+		t.Error("the backoff window should have been reset, not left expired")
+	}
+}

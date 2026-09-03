@@ -563,7 +563,12 @@ shows which credential is in use.
 was unavailable when the daemon started. The GitHub CLI keeps its token in the
 system keyring, which is still locked while services start at boot; PTAL
 retries the authenticated path every 10 minutes and picks the CLI token up
-once the keyring unlocks.
+once the keyring unlocks. `ptal restart` applies it immediately.
+
+> `ptal doctor` reports on the **running daemon**, not only on the shell you
+> typed it in. That distinction matters: the shell has an unlocked keyring and
+> the daemon may not, so checking the current process alone can show everything
+> green while the service has been searching anonymously since boot.
 
 **The service stopped after logout (Linux)** — `loginctl enable-linger $USER`.
 `ptal install` does this, but it can fail silently on some systems.

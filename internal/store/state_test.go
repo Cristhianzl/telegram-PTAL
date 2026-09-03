@@ -218,3 +218,29 @@ func TestForgetMessagesClearsThePanelToo(t *testing.T) {
 		t.Error("the panel ID should be cleared, since /clear deletes it too")
 	}
 }
+
+// `doctor` runs in a shell where the keyring is unlocked; the daemon starts
+// at boot, where it is not. Persisting what the daemon is actually doing is
+// what lets doctor report on the service rather than on itself.
+func TestDaemonHealthSurvivesReload(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	s, _ := Load(path)
+
+	s.DaemonMode = "public"
+	s.DaemonAuthenticated = false
+	s.DaemonStartedAt = time.Now().UTC()
+	if err := s.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	again, _ := Load(path)
+	if again.DaemonMode != "public" {
+		t.Errorf("DaemonMode = %q", again.DaemonMode)
+	}
+	if again.DaemonAuthenticated {
+		t.Error("DaemonAuthenticated should have survived as false")
+	}
+	if again.DaemonStartedAt.IsZero() {
+		t.Error("DaemonStartedAt did not survive")
+	}
+}

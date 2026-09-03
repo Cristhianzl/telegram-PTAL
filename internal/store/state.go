@@ -45,6 +45,14 @@ type State struct {
 	// different modes produces changes that never happened.
 	Mode string `json:"mode,omitempty"`
 
+	// DaemonMode and DaemonAuthenticated record what the running daemon is
+	// actually doing. `doctor` runs as a separate process, in a shell where
+	// the keyring is unlocked, so without this it reports its own health and
+	// cheerfully misses that the daemon is running blind.
+	DaemonMode          string    `json:"daemon_mode,omitempty"`
+	DaemonAuthenticated bool      `json:"daemon_authenticated"`
+	DaemonStartedAt     time.Time `json:"daemon_started_at,omitempty"`
+
 	LastSuccessAt time.Time `json:"last_success_at"`
 	LastErrorAt   time.Time `json:"last_error_at"`
 	LastError     string    `json:"last_error,omitempty"`

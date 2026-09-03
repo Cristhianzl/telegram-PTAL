@@ -88,6 +88,13 @@ func NewSource(token, login string, repos, ignoreAuthors []string, maxAgeDays in
 	s.maxAgeDays, s.includeTeamReviews = maxAgeDays, includeTeamReviews
 
 	s.retryAfter = retryRichAfter
+	// Starting without a credential is the same situation as degrading into
+	// one: the daemon boots before the system keyring unlocks, so the token
+	// simply is not readable yet. Marking the moment is what lets the retry
+	// pick it up later instead of running blind for the whole session.
+	if token == "" {
+		s.degradedAt = time.Now()
+	}
 
 	if token != "" {
 		s.rich = New(token)
@@ -130,7 +137,7 @@ func (s *Source) Resolve(ctx context.Context) error {
 func (s *Source) SetTokenRefresher(fn func() string) { s.refreshToken = fn }
 
 // maybeRetryRich puts the rich path back in play once the backoff has passed,
-// picking up a better credential if one became available.
+// picking up a credential that became available in the meantime.
 func (s *Source) maybeRetryRich() {
 	if s.mode != ModePublic || s.degradedAt.IsZero() {
 		return
@@ -152,8 +159,18 @@ func (s *Source) maybeRetryRich() {
 	}
 	if s.rich != nil {
 		s.switchMode(ModeRich, "retrying the authenticated path")
+		return
 	}
+	// Still nothing readable. Wait another interval rather than trying on
+	// every cycle, which would shell out to the CLI every two minutes.
+	s.degradedAt = time.Now()
 }
+
+// Authenticated reports whether searches currently carry a credential.
+// Running anonymously is not an error, but it cannot see private
+// repositories, and that is worth surfacing rather than discovering through
+// a confusing 422.
+func (s *Source) Authenticated() bool { return s.public.Token != "" }
 
 // Fetch retrieves the picture of your pull requests, falling back to public
 // mode if an organization policy blocks the token.

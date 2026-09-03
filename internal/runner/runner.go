@@ -144,6 +144,8 @@ func (r *Runner) Once(ctx context.Context) (*githubapi.Snapshot, int, error) {
 	r.state.PRs = next
 	r.state.Viewer = snap.Viewer
 	r.state.Mode = mode
+	r.state.DaemonMode = mode
+	r.state.DaemonAuthenticated = r.source.Authenticated()
 	r.state.FirstRunDone = true
 	r.state.LastSuccessAt = time.Now().UTC()
 	r.state.LastError = ""
@@ -260,6 +262,15 @@ func (r *Runner) resolveBotUsername(ctx context.Context) {
 // attempts from several machines do not line up.
 func (r *Runner) Run(ctx context.Context) error {
 	r.log.Printf("starting · interval %s · mode %s", r.cfg.PollInterval, r.source.Mode())
+	r.state.DaemonStartedAt = time.Now().UTC()
+
+	// Coming up with no credential at all deserves saying so. It happens
+	// when the daemon starts before the keyring unlocks, and the symptom
+	// otherwise is a confusing failure on the first private repository.
+	if !r.source.Authenticated() {
+		r.log.Printf("warning: no GitHub credential available - searches are anonymous " +
+			"and private repositories are invisible. Retrying every 10 minutes.")
+	}
 
 	// Commands are answered on their own goroutine: long polling blocks for
 	// up to 30 seconds at a time and must not delay the sync cycle.

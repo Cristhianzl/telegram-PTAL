@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- A daemon that starts with no credential at all now retries, instead of
+  searching anonymously for the rest of the session. The earlier fix only
+  covered degrading *into* reduced mode; one that started there never tried
+  again, so every private repository stayed invisible until a manual restart.
+- `ptal doctor` reports on the running daemon rather than only on itself. It
+  runs from a shell, where the keyring is unlocked and a token is available,
+  and was reporting everything green while the service had been running blind
+  since boot. `ptal status` shows the daemon's mode and credential too.
+- Starting without a credential is logged as a warning rather than passing
+  silently.
+
 ## [0.2.1] - 2026-08-31
 
 ### Added

@@ -124,6 +124,7 @@ func cmdDoctor(ctx context.Context) error {
 		}
 	} else {
 		fmt.Printf("• GitHub token: %s · source: %s\n", describeToken(cfg.GitHubToken), cfg.TokenSource)
+		fmt.Println("  (what this shell can reach - see the daemon's own state below)")
 		checkGitHub(ctx, cfg, fail)
 	}
 
@@ -150,6 +151,7 @@ func cmdDoctor(ctx context.Context) error {
 	}
 
 	info := service.Status()
+	reportDaemonHealth(cfg, info, fail)
 	switch {
 	case info.Running:
 		fmt.Printf("✓ Service running (%s)\n", info.Manager)
@@ -234,6 +236,46 @@ func checkGitHub(ctx context.Context, cfg *config.Config, fail func(string, ...a
 		if n := counts[b]; n > 0 {
 			fmt.Printf("    %-24s %d\n", b.Label(), n)
 		}
+	}
+}
+
+// reportDaemonHealth describes what the running daemon is doing, which is
+// not the same question as whether this process is healthy.
+//
+// `doctor` normally runs from a shell, where the system keyring is unlocked
+// and the GitHub CLI hands over a token. The daemon starts at boot, before
+// that happens. Checking only the current process reported everything green
+// while the service had been searching anonymously for hours - the failure
+// this function exists to catch.
+func reportDaemonHealth(cfg *config.Config, info service.Info, fail func(string, ...any)) {
+	if !info.Running {
+		return
+	}
+	st, err := store.Load(cfg.StatePath)
+	if err != nil || st.DaemonMode == "" {
+		return
+	}
+
+	switch {
+	case !st.DaemonAuthenticated:
+		fail("The running daemon has NO GitHub credential.\n" +
+			"  It is searching anonymously, so private repositories are invisible.\n" +
+			"  This happens when it starts before the system keyring unlocks.\n" +
+			"  Fix now:  ptal restart")
+
+	case st.DaemonMode == "public":
+		fmt.Println("• The running daemon is in reduced mode (public search).")
+		fmt.Println("  No CI state, approvals, or private repositories.")
+		fmt.Println("  It retries the authenticated path every 10 minutes;")
+		fmt.Println("  `ptal restart` applies a working credential immediately.")
+	}
+
+	// A daemon that has not completed a cycle since it started is stuck on
+	// something the log will explain.
+	if !st.DaemonStartedAt.IsZero() && st.LastSuccessAt.Before(st.DaemonStartedAt) {
+		fail("The daemon has not completed a cycle since it started at %s.\n"+
+			"  Check:  journalctl --user -u ptal -n 30",
+			st.DaemonStartedAt.Local().Format("2006-01-02 15:04"))
 	}
 }
 
@@ -423,6 +465,13 @@ func cmdStatus() error {
 	// so it belongs above everything else.
 	if p := pauseState(st); p != "" {
 		fmt.Printf("alerts:       %s\n", p)
+	}
+	if st.DaemonMode != "" {
+		credential := "authenticated"
+		if !st.DaemonAuthenticated {
+			credential = "ANONYMOUS - private repositories invisible"
+		}
+		fmt.Printf("daemon mode:  %s (%s)\n", st.DaemonMode, credential)
 	}
 	if !st.FirstRunDone {
 		fmt.Println("sync:         never run")
