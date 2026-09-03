@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-03
+
 ### Fixed
 
 - Reduced mode no longer claims private repositories are invisible. That
@@ -152,7 +154,8 @@ First release.
   technically open and would otherwise drown out the rest.
 - The first run is silent, recording what already exists without announcing it.
 
-[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.0...v0.2.1
