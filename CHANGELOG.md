@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-09
+
 ### Added
 
 - `ptal review-all <repo> [instructions]` and `/review-all` review every open
@@ -167,7 +169,8 @@ First release.
   technically open and would otherwise drown out the rest.
 - The first run is silent, recording what already exists without announcing it.
 
-[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Cristhianzl/telegram-PTAL/compare/v0.2.1...v0.2.2
