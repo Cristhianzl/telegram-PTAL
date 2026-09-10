@@ -31,6 +31,7 @@ COMMANDS
   panel       Send a panel with the current state to Telegram
   repo        List every open PR in a repository (ptal repo owner/name)
   review      Review a pull request with Claude Code
+  review-all  Review every open PR in a repository
   run         Keep running and alerting (what the service executes)
   install     Register to start with the system
   uninstall   Remove the registration
@@ -103,6 +104,8 @@ func main() {
 		err = cmdRepo(rest)
 	case "review":
 		err = cmdReview(rest)
+	case "review-all", "review_all":
+		err = cmdReviewAll(rest)
 	case "run":
 		if err = noArgs("run"); err == nil {
 			err = cmdRun(ctx)

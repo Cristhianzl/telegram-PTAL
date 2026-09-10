@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `ptal review-all <repo> [instructions]` and `/review-all` review every open
+  pull request in a repository with one command. The instructions are passed
+  to each review verbatim, so what happens to a pull request is decided by
+  what you ask for and the rules in your `.claude/` — there is no policy in
+  the tool.
+- A fourth verdict, `approve_and_merge`, lets an instruction reach a merge
+  without giving Claude write access: it decides, PTAL performs. Merges are
+  refused on drafts, conflicts, closed pull requests, unmet branch protection,
+  and out-of-date branches, and each refusal is reported.
+- `REVIEW_BATCH_LIMIT` caps how many pull requests one run covers.
+
 ## [0.2.4] - 2026-09-03
 
 ### Fixed

@@ -101,6 +101,11 @@ var settings = []Setting{
 		Validate: nil,
 	},
 	{
+		Key:      "REVIEW_BATCH_LIMIT",
+		Summary:  "Most pull requests one `review-all` will cover.",
+		Validate: validateInt(1, 100),
+	},
+	{
 		Key:      "REVIEW_MODEL",
 		Summary:  "Model override for reviews. Empty uses the CLI default.",
 		Validate: nil,
@@ -204,6 +209,8 @@ func (c *Config) Effective(key string) string {
 			return "(none)"
 		}
 		return c.ReviewInstructions
+	case "REVIEW_BATCH_LIMIT":
+		return strconv.Itoa(c.ReviewBatchLimit)
 	case "REVIEW_MODEL":
 		if c.ReviewModel == "" {
 			return "(CLI default)"

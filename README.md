@@ -233,6 +233,7 @@ ptal once        Run a single cycle and print what it found
 ptal panel       Send a panel with the current state to Telegram
 ptal repo <name> List every open PR in a repository (add a user to filter)
 ptal review      Review a pull request with Claude Code
+ptal review-all  Review every open PR in a repository
 
 ptal install     Register to start with the system
 ptal uninstall   Remove the registration
@@ -286,6 +287,7 @@ menu — no need to remember them.
 /pause 2h      stop alerting for a while
 /resume        start alerting again
 /review <repo> <n>  review a pull request with Claude
+/review-all <repo>  review every open PR in a repository
 /help          this list  (/start and /commands do the same)
 ```
 
@@ -319,6 +321,17 @@ Reviewing is off until you name the repositories:
 ptal config review-repos acme/api,my-org
 ptal config review-rules-dir ~/.config/ptal/reviewer-rules
 ```
+
+One command reviews a whole repository:
+
+```bash
+ptal review-all acme/api if nothing blocks, approve and merge it
+```
+
+or `/review-all acme/api …` in Telegram. Everything after the repository name
+is passed to each review, so the instruction decides what happens — there is
+no policy baked in. Reviews run one at a time, so ten pull requests take the
+better part of an hour.
 
 You can steer a single review:
 

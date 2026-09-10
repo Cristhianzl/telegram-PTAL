@@ -220,3 +220,78 @@ func TestCombineInstructionsHandlesEmpties(t *testing.T) {
 		t.Errorf("two blanks should combine to nothing, got %q", got)
 	}
 }
+
+// An instruction like "merge it if nothing blocks" has to be able to reach a
+// merge without handing Claude write access, so the verdict vocabulary
+// carries it and publishing stays here.
+func TestApproveAndMergeVerdict(t *testing.T) {
+	got, body := extractVerdict("Looks good.\n\nVERDICT: approve_and_merge")
+
+	if got != VerdictApproveAndMerge {
+		t.Fatalf("verdict = %q, want %q", got, VerdictApproveAndMerge)
+	}
+	if !got.Merges() {
+		t.Error("approve_and_merge must report that it merges")
+	}
+	if strings.Contains(body, "VERDICT") {
+		t.Errorf("the verdict line should be stripped: %q", body)
+	}
+
+	// It approves as well as merges, so the GitHub action is the same.
+	if action, _ := reviewAction(VerdictApproveAndMerge); action != "--approve" {
+		t.Errorf("action = %q, want --approve", action)
+	}
+}
+
+// The other verdicts must not merge. A slip here would push code to main.
+func TestOnlyApproveAndMergeMerges(t *testing.T) {
+	for _, v := range []Verdict{VerdictApprove, VerdictComment, VerdictRequestChanges} {
+		if v.Merges() {
+			t.Errorf("%s must not merge", v)
+		}
+	}
+}
+
+// The severity counts drive the summary, so they are asked for explicitly
+// rather than scraped from prose where a heading could change at any time.
+func TestExtractFindings(t *testing.T) {
+	f, body := extractFindings("Review text.\n\nFINDINGS: blockers=2 important=1 recommended=3")
+
+	if !f.Counted {
+		t.Fatal("the counts should be marked as reported")
+	}
+	if f.Blockers != 2 || f.Important != 1 || f.Recommended != 3 {
+		t.Errorf("findings = %+v", f)
+	}
+	if strings.Contains(body, "FINDINGS") {
+		t.Errorf("the line should be stripped from the body: %q", body)
+	}
+}
+
+// A review that did not report counts must never read as "zero blockers":
+// that would turn a parsing failure into a clean bill of health.
+func TestMissingFindingsIsNotZero(t *testing.T) {
+	f, body := extractFindings("A review with no counts line.")
+
+	if f.Counted {
+		t.Error("absent counts must not be reported as counted")
+	}
+	if f.Clean() {
+		t.Error("an uncounted review must not read as clean")
+	}
+	if body == "" {
+		t.Error("the body must survive")
+	}
+}
+
+func TestCleanOnlyWhenCountedAndEmpty(t *testing.T) {
+	if !(Findings{Counted: true}).Clean() {
+		t.Error("counted zeros are clean")
+	}
+	if (Findings{Counted: true, Blockers: 1}).Clean() {
+		t.Error("a blocker is not clean")
+	}
+	if (Findings{Counted: true, Recommended: 1}).Clean() {
+		t.Error("any finding at all is not clean")
+	}
+}

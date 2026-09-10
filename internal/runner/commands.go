@@ -25,6 +25,7 @@ var telegramCommands = []struct {
 	{"prs", "&lt;repo&gt; me", "Only the ones you opened", false},
 	{"repo", "&lt;repo&gt;", "The same as /prs &lt;repo&gt;", false},
 	{"review", "&lt;repo&gt; &lt;n&gt; [instructions]", "Review a PR with Claude Code", true},
+	{"review_all", "&lt;repo&gt; [instructions]", "Review every open PR in a repository", true},
 	{"status", "", "Last sync, mode, what is tracked", true},
 	{"pause", "2h", "Stop alerting for a while", true},
 	{"resume", "", "Start alerting again", true},
@@ -168,6 +169,8 @@ func (r *Runner) handleCommand(ctx context.Context, text string) {
 		r.resumeFromTelegram(ctx)
 	case "/review":
 		r.reviewFromTelegram(ctx, args)
+	case "/review-all", "/review_all", "/reviewall":
+		r.reviewAllFromTelegram(ctx, args)
 	default:
 		r.reply(ctx, "Unknown command. Try /help")
 	}

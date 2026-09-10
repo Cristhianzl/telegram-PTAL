@@ -2,6 +2,7 @@ package reviewer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,7 +61,7 @@ func (r *Reviewer) publish(ctx context.Context, repo string, number int, result 
 
 func reviewAction(v Verdict) (string, error) {
 	switch v {
-	case VerdictApprove:
+	case VerdictApprove, VerdictApproveAndMerge:
 		return "--approve", nil
 	case VerdictRequestChanges:
 		return "--request-changes", nil
@@ -102,6 +103,49 @@ func commentURLFrom(out, repo string, number int) string {
 		}
 	}
 	return fmt.Sprintf("https://github.com/%s/pull/%d", repo, number)
+}
+
+// merge completes a pull request after the review has been posted.
+//
+// It runs only when the verdict asked for it, and it refuses cases GitHub
+// would either reject or silently do the wrong thing with. Those checks are
+// here rather than left to `gh` because a merge is the one action in this
+// tool that cannot be taken back.
+func (r *Reviewer) merge(ctx context.Context, repo string, number int) (bool, string) {
+	out, err := runCmd(ctx, "", "gh", "pr", "view", fmt.Sprint(number), "--repo", repo,
+		"--json", "isDraft,mergeable,state,mergeStateStatus")
+	if err != nil {
+		return false, "could not read the pull request: " + truncate(out, 120)
+	}
+
+	var pr struct {
+		IsDraft          bool   `json:"isDraft"`
+		Mergeable        string `json:"mergeable"`
+		State            string `json:"state"`
+		MergeStateStatus string `json:"mergeStateStatus"`
+	}
+	if err := json.Unmarshal([]byte(out), &pr); err != nil {
+		return false, "could not read the pull request state"
+	}
+
+	switch {
+	case pr.State != "OPEN":
+		return false, "the pull request is " + strings.ToLower(pr.State)
+	case pr.IsDraft:
+		return false, "it is a draft"
+	case pr.Mergeable == "CONFLICTING":
+		return false, "it has merge conflicts"
+	case pr.MergeStateStatus == "BLOCKED":
+		return false, "the branch protection rules block it"
+	case pr.MergeStateStatus == "BEHIND":
+		return false, "the branch is behind and needs updating"
+	}
+
+	if out, err := runCmd(ctx, "", "gh", "pr", "merge", fmt.Sprint(number),
+		"--repo", repo, "--squash", "--delete-branch=false"); err != nil {
+		return false, truncate(out, 160)
+	}
+	return true, ""
 }
 
 // DefaultRulesDir is where PTAL looks for review rules when none is set:

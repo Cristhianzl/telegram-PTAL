@@ -114,6 +114,61 @@ ptal review api 412 --dry-run     # print it, publish nothing
 `--dry-run` ignores the allowlist, because it cannot touch GitHub. It is the
 right way to see what a review looks like before enabling a repository.
 
+## Reviewing a whole repository
+
+`review-all` runs the same review over every open pull request:
+
+```bash
+ptal review-all acme/api
+ptal review-all api --dry-run          # print the plan, review nothing
+```
+
+In Telegram:
+
+```
+/review-all api
+/review-all api if nothing blocks, approve and merge it
+```
+
+Everything after the repository name is passed to each review, exactly as with
+a single one. **There is no policy baked in** — whether a pull request ends up
+approved, blocked, or merged is decided by the instruction you give and the
+rules in your `.claude/`.
+
+For a merge to happen, the instruction has to ask for it and the review has to
+agree. Claude signals that with a fourth verdict, `approve_and_merge`, and PTAL
+performs the merge — the read-only boundary is unchanged.
+
+### What it refuses to merge
+
+A merge is the one action here that cannot be taken back, so PTAL checks
+before performing one, rather than leaving it to `gh` to fail:
+
+| Refused when | Why |
+|---|---|
+| The pull request is closed or already merged | Nothing to do |
+| It is a draft | Work in progress |
+| It has conflicts | The merge would be wrong even if it succeeded |
+| Branch protection blocks it | Required checks or reviews are unmet |
+| The branch is behind | It needs updating first |
+
+Each refusal is reported per pull request, so a merge that did not happen is
+never silent.
+
+### Pacing
+
+Reviews run **one at a time**. Each drives a Claude Code session, and several
+at once would compete for the same subscription and could exhaust it partway
+through — leaving a repository half reviewed, which is worse than a slower run
+that finishes.
+
+Ten open pull requests is therefore the better part of an hour. `Ctrl+C` stops
+after the review in flight rather than losing it, and `REVIEW_BATCH_LIMIT`
+(default 20) caps a single run.
+
+Drafts are skipped unless you pass `--drafts`, and authors in `IGNORE_AUTHORS`
+are left alone, so a batch does not spend its budget on dependency bumps.
+
 ## Steering a review
 
 Anything passed with `-m` is added to the prompt, between the diff command and
@@ -161,10 +216,11 @@ verdict is reached. Use `--dry-run` when trying out a new phrasing.
 The review ends with a machine-readable line:
 
 ```
-VERDICT: approve | comment | request_changes
+VERDICT: approve | comment | request_changes | approve_and_merge
 ```
 
-which becomes `gh pr review --approve`, `--comment` or `--request-changes`.
+which becomes `gh pr review --approve`, `--comment` or `--request-changes`,
+followed by `gh pr merge --squash` for the last one.
 
 If that line is missing — the model forgot it, the output was cut — the verdict
 falls back to `comment`. A parsing slip can never approve or block a pull
@@ -181,6 +237,7 @@ review is posted as a plain comment instead of being lost.
 | `REVIEW_RULES_DIR` | Directory holding `.claude/`. Defaults to `reviewer-rules/` beside your config. |
 | `REVIEW_MODEL` | Model override, e.g. `opus`. Defaults to whatever the CLI uses. |
 | `REVIEW_TIMEOUT` | Cap on one review. Default `15m`. |
+| `REVIEW_BATCH_LIMIT` | Most pull requests one `review-all` covers. Default `20`. |
 
 ## What it costs
 

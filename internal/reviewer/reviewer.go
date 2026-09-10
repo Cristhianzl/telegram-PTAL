@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,7 +34,16 @@ const (
 	VerdictApprove        Verdict = "approve"
 	VerdictComment        Verdict = "comment"
 	VerdictRequestChanges Verdict = "request_changes"
+	// VerdictApproveAndMerge approves and then merges.
+	//
+	// It exists so an instruction like "merge it if nothing blocks" can be
+	// carried out without handing Claude write access. The decision is the
+	// model's; performing it stays here, where it is one auditable call.
+	VerdictApproveAndMerge Verdict = "approve_and_merge"
 )
+
+// Merges reports whether the verdict asks for a merge.
+func (v Verdict) Merges() bool { return v == VerdictApproveAndMerge }
 
 // Result is everything one review produced.
 type Result struct {
@@ -41,11 +51,18 @@ type Result struct {
 	Number   int
 	Body     string
 	Verdict  Verdict
+	Findings Findings
 	Duration time.Duration
 	// Posted records whether the comment reached GitHub.
 	Posted bool
 	// CommentURL is the published comment, when there is one.
 	CommentURL string
+	// Merged records whether the pull request was actually merged. A verdict
+	// asking for it is not the same as it having happened: GitHub refuses a
+	// merge on conflicts, failing required checks, or a closed branch.
+	Merged bool
+	// MergeSkipped explains why a requested merge did not happen.
+	MergeSkipped string
 }
 
 // Options configures a review run.
@@ -102,15 +119,18 @@ base. Start with:
   git diff $(git merge-base HEAD origin/%s)...HEAD
 %s
 Output ONLY the review comment itself, in Markdown, with no preamble and no
-closing remarks. The last line of your output must be exactly one of:
+closing remarks. The last two lines of your output must be exactly:
 
-VERDICT: approve
-VERDICT: comment
-VERDICT: request_changes
+FINDINGS: blockers=<n> important=<n> recommended=<n>
+VERDICT: approve|comment|request_changes|approve_and_merge
 
-Use approve when the change is safe to merge, request_changes when there is at
-least one Blocker, and comment when the findings are worth raising but none of
-them block.`
+Count every finding you raised, by the severity you gave it.
+
+Choose the verdict by these defaults, unless the instructions above say
+otherwise: request_changes when there is at least one Blocker, comment when
+the findings are worth raising but none of them block, approve when the change
+is safe to merge. Use approve_and_merge only when the instructions ask for the
+pull request to be merged and you judge it should be.`
 
 // Reviewer runs reviews.
 type Reviewer struct {
@@ -163,9 +183,10 @@ func (r *Reviewer) Review(ctx context.Context, repo string, number int, progress
 	}
 
 	verdict, body := extractVerdict(body)
+	findings, body := extractFindings(body)
 	result := &Result{
 		Repo: repo, Number: number,
-		Body: body, Verdict: verdict,
+		Body: body, Verdict: verdict, Findings: findings,
 		Duration: time.Since(started),
 	}
 
@@ -182,6 +203,12 @@ func (r *Reviewer) Review(ctx context.Context, repo string, number int, progress
 	}
 	result.Posted = true
 	result.CommentURL = url
+
+	if result.Verdict.Merges() {
+		progress("merging")
+		merged, why := r.merge(ctx, repo, number)
+		result.Merged, result.MergeSkipped = merged, why
+	}
 	return result, nil
 }
 
@@ -320,7 +347,41 @@ func parseClaudeJSON(out []byte) (string, error) {
 	return "", fmt.Errorf("could not read Claude's output: %s", truncate(string(out), 300))
 }
 
-var verdictLine = regexp.MustCompile(`(?im)^\s*VERDICT:\s*(approve|comment|request[_ -]?changes)\s*$`)
+var verdictLine = regexp.MustCompile(`(?im)^\s*VERDICT:\s*(approve[_ -]and[_ -]merge|approve|comment|request[_ -]?changes)\s*$`)
+
+var findingsLine = regexp.MustCompile(`(?im)^\s*FINDINGS:\s*blockers=(\d+)\s+important=(\d+)\s+recommended=(\d+)\s*$`)
+
+// Findings counts what a review raised, by severity. It is what the batch
+// policy decides on, so it is asked for explicitly rather than scraped out of
+// the prose, where a heading or an emoji could change at any time.
+type Findings struct {
+	Blockers    int
+	Important   int
+	Recommended int
+	// Counted records whether the review actually reported these. A review
+	// that did not say must never be read as "zero blockers", which would
+	// turn a parsing failure into a merge.
+	Counted bool
+}
+
+// Clean reports whether nothing at all was raised.
+func (f Findings) Clean() bool { return f.Counted && f.Blockers == 0 && f.Important == 0 && f.Recommended == 0 }
+
+// extractFindings pulls the severity counts out of the review and strips the
+// line from the body.
+func extractFindings(text string) (Findings, string) {
+	match := findingsLine.FindStringSubmatch(text)
+	if match == nil {
+		return Findings{}, text
+	}
+	atoi := func(s string) int { n, _ := strconv.Atoi(s); return n }
+	return Findings{
+		Blockers:    atoi(match[1]),
+		Important:   atoi(match[2]),
+		Recommended: atoi(match[3]),
+		Counted:     true,
+	}, strings.TrimSpace(findingsLine.ReplaceAllString(text, ""))
+}
 
 // extractVerdict separates the machine-readable verdict from the comment body.
 //
@@ -335,6 +396,8 @@ func extractVerdict(text string) (Verdict, string) {
 
 	body := strings.TrimSpace(verdictLine.ReplaceAllString(text, ""))
 	switch strings.ToLower(strings.NewReplacer("-", "_", " ", "_").Replace(match[1])) {
+	case "approve_and_merge":
+		return VerdictApproveAndMerge, body
 	case "approve":
 		return VerdictApprove, body
 	case "request_changes":

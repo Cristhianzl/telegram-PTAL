@@ -318,7 +318,7 @@ func TestOnlyOneReviewRunsAtATime(t *testing.T) {
 func TestCommandMenuMatchesWhatIsAnswered(t *testing.T) {
 	// Every command the handler accepts, from the switch in commands.go.
 	answered := map[string]bool{
-		"prs": true, "repo": true, "review": true, "status": true,
+		"prs": true, "repo": true, "review": true, "review_all": true, "status": true,
 		"pause": true, "resume": true, "clear": true, "help": true,
 	}
 
